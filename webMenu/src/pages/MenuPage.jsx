@@ -5,7 +5,16 @@ import { Search, ShoppingBag, Plus, Minus, ChevronRight } from "lucide-react";
 import { useCart } from "../context/CartContext";
 
 const MenuItemCard = ({ item, onAdd, cart, updateQuantity }) => {
-  const cartItem = cart.find((c) => c.id === item.id);
+  const hasVariants = Array.isArray(item.variants) && item.variants.length > 0;
+  const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
+
+  const currentVariant = hasVariants ? item.variants[selectedVariantIndex] : null;
+  const cartItemId = currentVariant ? `${item.id}_${currentVariant.weight}` : item.id;
+  const cartItem = cart.find((c) => c.id === cartItemId);
+
+  const displayPrice = currentVariant
+    ? (currentVariant.offerPrice || currentVariant.price)
+    : item.price;
 
   return (
     <div className="bg-white rounded-2xl p-4 border border-amber-100 shadow-sm hover:shadow-md transition-shadow flex gap-4">
@@ -33,12 +42,38 @@ const MenuItemCard = ({ item, onAdd, cart, updateQuantity }) => {
           {item.description && (
             <p className="text-gray-500 text-xs mt-1 line-clamp-2">{item.description}</p>
           )}
+
+          {/* Weight Variant Selector Chips (0.5 kg, 1 kg, 1.5 kg, 2 kg) */}
+          {hasVariants && (
+            <div className="mt-2 flex flex-wrap gap-1.5 items-center">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1">
+                Weight:
+              </span>
+              {item.variants.map((v, idx) => {
+                const isSelected = selectedVariantIndex === idx;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setSelectedVariantIndex(idx)}
+                    className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all border ${
+                      isSelected
+                        ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                        : "bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100"
+                    }`}
+                  >
+                    {v.weight}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50">
+        <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-50">
           <div className="flex items-baseline gap-2">
-            <span className="font-extrabold text-base text-amber-700">₹{item.price}</span>
-            {item.originalPrice && (
+            <span className="font-extrabold text-base text-amber-700">₹{displayPrice}</span>
+            {item.originalPrice && !currentVariant && (
               <span className="text-xs text-gray-400 line-through">₹{item.originalPrice}</span>
             )}
           </div>
@@ -47,7 +82,7 @@ const MenuItemCard = ({ item, onAdd, cart, updateQuantity }) => {
           {cartItem ? (
             <div className="flex items-center bg-amber-50 rounded-lg border border-amber-200">
               <button
-                onClick={() => updateQuantity(item.id, -1)}
+                onClick={() => updateQuantity(cartItemId, -1)}
                 className="w-7 h-7 flex items-center justify-center text-amber-800 hover:bg-amber-100 rounded-l"
               >
                 <Minus className="w-3.5 h-3.5" />
@@ -56,7 +91,7 @@ const MenuItemCard = ({ item, onAdd, cart, updateQuantity }) => {
                 {cartItem.quantity}
               </span>
               <button
-                onClick={() => updateQuantity(item.id, 1)}
+                onClick={() => updateQuantity(cartItemId, 1)}
                 className="w-7 h-7 flex items-center justify-center text-amber-800 hover:bg-amber-100 rounded-r"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -64,7 +99,7 @@ const MenuItemCard = ({ item, onAdd, cart, updateQuantity }) => {
             </div>
           ) : (
             <button
-              onClick={() => onAdd(item)}
+              onClick={() => onAdd(item, currentVariant)}
               className="bg-amber-600 hover:bg-amber-700 active:scale-95 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-sm"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -267,7 +302,7 @@ export const MenuPage = () => {
                   <span className="text-base font-black">₹{cartTotal}</span>
                 </div>
                 <p className="text-[11px] text-amber-100/90 line-clamp-1 max-w-[200px] sm:max-w-[260px]">
-                  {cart.map((c) => `${c.quantity}x ${c.name}`).join(", ")}
+                  {cart.map((c) => `${c.quantity}x ${c.name}${c.variant ? ` (${c.variant})` : ''}`).join(", ")}
                 </p>
               </div>
             </div>

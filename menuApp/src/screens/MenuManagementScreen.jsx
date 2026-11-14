@@ -270,7 +270,24 @@ export const MenuManagementScreen = () => {
                   ) : (
                     <Text style={styles.activePrice}>₹{item.price}</Text>
                   )}
+                  {Array.isArray(item.variants) && item.variants.length > 0 && (
+                    <Text style={styles.variantCountTag}>
+                      ({item.variants.length} sizes)
+                    </Text>
+                  )}
                 </View>
+
+                {/* Weight Variants Pills */}
+                {Array.isArray(item.variants) && item.variants.length > 0 && (
+                  <View style={styles.variantsPillContainer}>
+                    {item.variants.map((v, vIdx) => (
+                      <View key={vIdx} style={styles.variantCatalogPill}>
+                        <Text style={styles.variantCatalogWeight}>{v.weight}:</Text>
+                        <Text style={styles.variantCatalogPrice}>₹{v.price}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
             </View>
 
@@ -697,6 +714,42 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textLight,
     textDecorationLine: 'line-through',
+  },
+  variantCountTag: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.primaryDark,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  variantsPillContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 5,
+    marginTop: 8,
+  },
+  variantCatalogPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFDF9',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    gap: 3,
+  },
+  variantCatalogWeight: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+  },
+  variantCatalogPrice: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: COLORS.primaryDark,
   },
   cardControls: {
     flexDirection: 'row',

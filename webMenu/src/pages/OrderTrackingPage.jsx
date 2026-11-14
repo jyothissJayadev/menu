@@ -218,9 +218,14 @@ export const OrderTrackingPage = () => {
           <div className="divide-y divide-gray-100">
             {order.items?.map((it, idx) => (
               <div key={idx} className="py-2.5 flex justify-between items-center text-sm">
-                <div>
-                  <span className="font-black text-amber-800 mr-2">{it.qty}x</span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-black text-amber-800 mr-1">{it.qty}x</span>
                   <span className="font-bold text-gray-800">{it.name}</span>
+                  {it.variant && (
+                    <span className="bg-amber-100 text-amber-900 text-[10px] font-black px-1.5 py-0.5 rounded-full border border-amber-200">
+                      {it.variant}
+                    </span>
+                  )}
                 </div>
                 <span className="font-extrabold text-gray-900">₹{it.price * it.qty}</span>
               </div>

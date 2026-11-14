@@ -84,6 +84,7 @@ export const CartProvider = ({ children }) => {
                   image: i.image,
                   available: i.available !== undefined ? i.available : true,
                   isBestseller: i.offer || false,
+                  variants: Array.isArray(i.variants) ? i.variants : [],
                 }))
               );
             }
@@ -101,15 +102,34 @@ export const CartProvider = ({ children }) => {
     };
   }, []);
 
-  const addToCart = (item) => {
+  const addToCart = (item, selectedVariant = null) => {
+    const variantWeight = selectedVariant ? selectedVariant.weight : "";
+    const variantPrice = selectedVariant
+      ? (selectedVariant.offerPrice || selectedVariant.price)
+      : item.price;
+    const cartItemId = selectedVariant
+      ? `${item.id}_${selectedVariant.weight}`
+      : item.id;
+
     setCart((prev) => {
-      const existing = prev.find((i) => i.id === item.id);
+      const existing = prev.find((i) => i.id === cartItemId);
       if (existing) {
         return prev.map((i) =>
-          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
+          i.id === cartItemId ? { ...i, quantity: i.quantity + 1 } : i
         );
       }
-      return [...prev, { ...item, quantity: 1 }];
+      return [
+        ...prev,
+        {
+          ...item,
+          id: cartItemId,
+          originalItemId: item.id,
+          selectedVariant: selectedVariant || null,
+          variant: variantWeight,
+          price: variantPrice,
+          quantity: 1,
+        },
+      ];
     });
   };
 

@@ -85,7 +85,14 @@ export const CartPage = () => {
 
                     {/* Item Info */}
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-gray-900 truncate">{item.name}</p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="font-bold text-sm text-gray-900 truncate">{item.name}</p>
+                        {item.variant && (
+                          <span className="bg-amber-100 text-amber-900 text-[10px] font-black px-1.5 py-0.5 rounded-full border border-amber-200">
+                            {item.variant}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs font-semibold text-amber-700 mt-0.5">
                         ₹{item.price} each • Subtotal: ₹{item.price * item.quantity}
                       </p>

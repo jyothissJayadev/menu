@@ -64,8 +64,9 @@ export const CheckoutPage = () => {
         table,
         notes: notes.trim(),
         items: cart.map((i) => ({
-          itemId: i.id,
+          itemId: i.originalItemId || i.id,
           name: i.name,
+          variant: i.variant || (i.selectedVariant ? i.selectedVariant.weight : ""),
           qty: i.quantity,
           price: i.price,
           addons: [],
@@ -118,7 +119,7 @@ export const CheckoutPage = () => {
                 Order for {cartCount} {cartCount === 1 ? "cake" : "cakes"}
               </p>
               <p className="text-xs text-amber-800 mt-0.5 line-clamp-1">
-                {cart.map((c) => `${c.quantity}x ${c.name}`).join(", ")}
+                {cart.map((c) => `${c.quantity}x ${c.name}${c.variant ? ` (${c.variant})` : ''}`).join(", ")}
               </p>
             </div>
             <div className="text-right">

@@ -29,6 +29,7 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
   const [offerPrice, setOfferPrice] = useState('');
   const [available, setAvailable] = useState(true);
   const [image, setImage] = useState('');
+  const [variants, setVariants] = useState([]);
 
   // Dropdown & New Category State
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -46,6 +47,16 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
       setOfferPrice(initialItem.offerPrice ? String(initialItem.offerPrice) : '');
       setAvailable(initialItem.available !== undefined ? initialItem.available : true);
       setImage(initialItem.image || '');
+      if (Array.isArray(initialItem.variants) && initialItem.variants.length > 0) {
+        setVariants(
+          initialItem.variants.map((v) => ({
+            weight: v.weight || '',
+            price: v.price !== undefined ? String(v.price) : '',
+          }))
+        );
+      } else {
+        setVariants([]);
+      }
     } else {
       // Reset for new item
       setName('');
@@ -56,12 +67,35 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
       setOfferPrice('');
       setAvailable(true);
       setImage('');
+      setVariants([]);
     }
     setIsDropdownOpen(false);
     setIsAddingNewCat(false);
     setNewCatNameInput('');
     setAssignedNewCategoryName(null);
   }, [initialItem, visible, categories]);
+
+  // Handlers for weight variants
+  const handleAddPreset = (weight) => {
+    if (variants.some((v) => v.weight.toLowerCase() === weight.toLowerCase())) return;
+    setVariants((prev) => [...prev, { weight, price: '' }]);
+  };
+
+  const handleAddCustomVariant = () => {
+    setVariants((prev) => [...prev, { weight: '', price: '' }]);
+  };
+
+  const handleUpdateVariant = (index, field, value) => {
+    setVariants((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  const handleRemoveVariant = (index) => {
+    setVariants((prev) => prev.filter((_, i) => i !== index));
+  };
 
   // Sort categories by sequential position for dropdown display
   const sortedCategories = React.useMemo(() => {
@@ -149,20 +183,37 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
       else Alert.alert('Missing Field', msg);
       return;
     }
-    if (!price || isNaN(Number(price))) {
-      const msg = 'Please enter a valid price';
-      if (Platform.OS === 'web') window.alert(msg);
-      else Alert.alert('Invalid Price', msg);
-      return;
+
+    // Clean variants
+    const cleanedVariants = variants
+      .filter((v) => v.weight && v.weight.trim() && !isNaN(Number(v.price)))
+      .map((v) => ({
+        weight: v.weight.trim(),
+        price: Number(v.price),
+        offerPrice: null,
+      }));
+
+    // If base price is empty, but variants exist, use lowest or first variant price as base
+    let finalPrice = Number(price);
+    if (!price || isNaN(finalPrice)) {
+      if (cleanedVariants.length > 0) {
+        finalPrice = cleanedVariants[0].price;
+      } else {
+        const msg = 'Please enter a valid price or add weight variants with prices';
+        if (Platform.OS === 'web') window.alert(msg);
+        else Alert.alert('Invalid Price', msg);
+        return;
+      }
     }
 
     const payload = {
       name: name.trim(),
       categoryId: categoryId || (categories[0] ? categories[0]._id : 'cat-1'),
       description: description.trim(),
-      price: Number(price),
+      price: finalPrice,
       offer: hasOffer,
       offerPrice: hasOffer && offerPrice ? Number(offerPrice) : null,
+      variants: cleanedVariants,
       available,
       image: image.trim() || 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500&auto=format&fit=crop&q=60',
     };
@@ -361,6 +412,101 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
                 trackColor={{ false: COLORS.border, true: '#D1FAE5' }}
                 thumbColor={available ? COLORS.success : '#ccc'}
               />
+            </View>
+
+            {/* Cake Weight & Size Variants (0.5 kg, 1 kg, 1.5 kg, 2 kg) */}
+            <View style={styles.variantsCard}>
+              <View style={styles.variantsHeader}>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="scale-outline" size={16} color={COLORS.primaryDark} />
+                    <Text style={styles.variantsTitle}>Cake Weight Variants (Optional)</Text>
+                  </View>
+                  <Text style={styles.variantsSubtitle}>
+                    Add specific kg options (1/2 kg, 1 kg, 1.5 kg, 2 kg) with individual prices
+                  </Text>
+                </View>
+              </View>
+
+              {/* Preset buttons */}
+              <View style={styles.presetButtonsRow}>
+                {['0.5 kg', '1 kg', '1.5 kg', '2 kg'].map((preset) => {
+                  const isAdded = variants.some(
+                    (v) => v.weight.toLowerCase() === preset.toLowerCase()
+                  );
+                  return (
+                    <TouchableOpacity
+                      key={preset}
+                      style={[styles.presetChip, isAdded && styles.presetChipDisabled]}
+                      onPress={() => !isAdded && handleAddPreset(preset)}
+                      disabled={isAdded}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.presetChipText,
+                          isAdded && styles.presetChipTextDisabled,
+                        ]}
+                      >
+                        {isAdded ? `✓ ${preset}` : `+ ${preset}`}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+                <TouchableOpacity
+                  style={styles.customVariantChip}
+                  onPress={handleAddCustomVariant}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="add" size={13} color={COLORS.primaryDark} />
+                  <Text style={styles.customVariantChipText}>Custom</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Variants List */}
+              {variants.length > 0 ? (
+                <View style={styles.variantsList}>
+                  {variants.map((v, idx) => (
+                    <View key={idx} style={styles.variantRow}>
+                      <View style={{ flex: 1.2 }}>
+                        <Text style={styles.variantFieldLabel}>Weight / Option</Text>
+                        <TextInput
+                          style={styles.variantInput}
+                          placeholder="e.g. 1 kg"
+                          placeholderTextColor={COLORS.textLight}
+                          value={v.weight}
+                          onChangeText={(val) => handleUpdateVariant(idx, 'weight', val)}
+                        />
+                      </View>
+
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.variantFieldLabel}>Price (₹) *</Text>
+                        <TextInput
+                          style={styles.variantInput}
+                          placeholder="₹ Price"
+                          placeholderTextColor={COLORS.textLight}
+                          keyboardType="numeric"
+                          value={v.price}
+                          onChangeText={(val) => handleUpdateVariant(idx, 'price', val)}
+                        />
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.deleteVariantBtn}
+                        onPress={() => handleRemoveVariant(idx)}
+                      >
+                        <Ionicons name="trash-outline" size={16} color={COLORS.danger} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.noVariantsBox}>
+                  <Text style={styles.noVariantsText}>
+                    No weight variants added. Single base price above will apply for this item.
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* Description */}
@@ -637,130 +783,126 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.textWhite,
   },
-  catOrderCard: {
+  variantsCard: {
     backgroundColor: '#FFFDF9',
     borderWidth: 1,
     borderColor: '#FDE68A',
-    borderRadius: 12,
-    marginTop: 10,
+    borderRadius: 14,
+    marginTop: 14,
     marginBottom: 6,
-    overflow: 'hidden',
+    padding: 12,
   },
-  catOrderCardHeader: {
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#FEF3C7',
-    backgroundColor: '#FEF9EE',
-  },
-  catOrderTitleRow: {
+  variantsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
-  catOrderCardTitle: {
-    fontSize: 12,
+  variantsTitle: {
+    fontSize: 13,
     fontWeight: '800',
     color: COLORS.textPrimary,
   },
-  catOrderCardSubtitle: {
-    fontSize: 10,
+  variantsSubtitle: {
+    fontSize: 11,
     color: COLORS.textSecondary,
     marginTop: 2,
   },
-  catOrderList: {
-    padding: 6,
-    gap: 4,
+  presetButtonsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 10,
+    alignItems: 'center',
   },
-  catOrderRow: {
+  presetChip: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  presetChipDisabled: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+    opacity: 0.7,
+  },
+  presetChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.primaryDark,
+  },
+  presetChipTextDisabled: {
+    color: COLORS.textLight,
+  },
+  customVariantChip: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: COLORS.borderLight,
-    borderRadius: 8,
+    borderColor: COLORS.primaryDark,
+    borderStyle: 'dashed',
     paddingHorizontal: 8,
-    paddingVertical: 7,
+    paddingVertical: 5,
+    borderRadius: 8,
+    gap: 3,
   },
-  catOrderRowSelected: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primaryLight,
+  customVariantChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.primaryDark,
   },
-  catOrderSelectArea: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+  variantsList: {
     gap: 8,
   },
-  catOrderPosBadge: {
-    width: 26,
-    height: 22,
-    borderRadius: 6,
-    backgroundColor: COLORS.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  catOrderPosBadgeSelected: {
-    backgroundColor: COLORS.primaryDark,
-  },
-  catOrderPosText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: COLORS.textSecondary,
-  },
-  catOrderPosTextSelected: {
-    color: COLORS.textWhite,
-  },
-  catOrderName: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
-  catOrderNameSelected: {
-    color: COLORS.primaryDark,
-    fontWeight: '800',
-  },
-  catOrderActiveTag: {
+  variantRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: '#FFF',
+    alignItems: 'flex-end',
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: COLORS.primary,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 4,
+    borderColor: COLORS.borderLight,
+    borderRadius: 10,
+    padding: 8,
+    gap: 8,
   },
-  catOrderActiveTagText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: COLORS.primaryDark,
-  },
-  catOrderItemCount: {
+  variantFieldLabel: {
     fontSize: 10,
-    color: COLORS.textLight,
-    marginTop: 1,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    marginBottom: 3,
   },
-  catOrderBtnGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  catArrowBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 6,
+  variantInput: {
     backgroundColor: COLORS.surfaceAlt,
     borderWidth: 1,
     borderColor: COLORS.border,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    fontSize: 12,
+    color: COLORS.textPrimary,
+  },
+  deleteVariantBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#FEE2E2',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 1,
   },
-  catArrowBtnDisabled: {
-    opacity: 0.35,
-    backgroundColor: '#F3F4F6',
-    borderColor: '#E5E7EB',
+  noVariantsBox: {
+    backgroundColor: COLORS.surface,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  noVariantsText: {
+    fontSize: 11,
+    color: COLORS.textLight,
+    fontStyle: 'italic',
   },
   row: {
     flexDirection: 'row',

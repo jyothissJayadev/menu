@@ -147,7 +147,14 @@ export const OrderDetailModal = ({ order, visible, onClose }) => {
                     <Text style={styles.qtyText}>{item.qty}x</Text>
                   </View>
                   <View style={{ flex: 1, marginHorizontal: 10 }}>
-                    <Text style={styles.itemName}>{item.name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <Text style={styles.itemName}>{item.name}</Text>
+                      {item.variant ? (
+                        <View style={styles.variantTag}>
+                          <Text style={styles.variantTagText}>{item.variant}</Text>
+                        </View>
+                      ) : null}
+                    </View>
                     {item.addons && item.addons.length > 0 && (
                       <View style={styles.addonsWrapper}>
                         {item.addons.map((ad, idx) => (
@@ -459,6 +466,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.textPrimary,
+  },
+  variantTag: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  variantTagText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: COLORS.primaryDark,
   },
   addonsWrapper: {
     flexDirection: 'row',

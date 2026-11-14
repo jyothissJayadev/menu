@@ -254,6 +254,7 @@ export const AppProvider = ({ children }) => {
       price: Number(itemData.price) || 0,
       offer: Boolean(itemData.offer),
       offerPrice: itemData.offer ? Number(itemData.offerPrice) || null : null,
+      variants: Array.isArray(itemData.variants) ? itemData.variants : [],
       available: itemData.available !== undefined ? Boolean(itemData.available) : true,
       image: itemData.image || '',
       timing: [],

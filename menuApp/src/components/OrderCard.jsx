@@ -68,9 +68,16 @@ export const OrderCard = ({ order, onPress }) => {
         {order.items.map((item, idx) => (
           <View key={idx} style={styles.itemRow}>
             <Text style={styles.itemQty}>{item.qty}×</Text>
-            <Text style={styles.itemName} numberOfLines={1}>
-              {item.name}
-            </Text>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+              <Text style={styles.itemName} numberOfLines={1}>
+                {item.name}
+              </Text>
+              {item.variant ? (
+                <View style={styles.variantBadge}>
+                  <Text style={styles.variantBadgeText}>{item.variant}</Text>
+                </View>
+              ) : null}
+            </View>
             <Text style={styles.itemPrice}>₹{item.price * item.qty}</Text>
           </View>
         ))}
@@ -270,10 +277,22 @@ const styles = StyleSheet.create({
     width: 24,
   },
   itemName: {
-    flex: 1,
     fontSize: 13,
     color: COLORS.textPrimary,
     fontWeight: '500',
+  },
+  variantBadge: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  variantBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: COLORS.primaryDark,
   },
   itemPrice: {
     fontSize: 12,
