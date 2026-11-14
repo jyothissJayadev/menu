@@ -27,7 +27,7 @@ async function seed() {
   // 1. Create Cake Shop Company
   const company = await Company.create({
     name: "Lavino Cake Studio",
-    location: "Main Street, Baker District",
+    location: "Cherupuzha",
     logo: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=200&auto=format&fit=crop&q=60",
     settings: {
       currency: "INR",

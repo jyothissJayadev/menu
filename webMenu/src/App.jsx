@@ -19,9 +19,9 @@ const DEFAULT_RESTAURANT = {
   rating: 4.9,
   ratingCount: "2.4K+",
   time: "20-30 mins",
-  location: "Main Street, Baker District",
+  location: "Cherupuzha",
   discount: "Flat ₹100 off",
-  discountSub: "USE DELIGHTS | ABOVE ₹500",
+  discountSub: "USE LAVINO | ABOVE ₹500",
 };
 
 const DEFAULT_CATEGORIES = [
@@ -619,7 +619,11 @@ export default function App() {
   }, [categories, menuItems, selectedCat, searchTerm]);
 
   return (
-    <div className="min-h-screen bg-amber-50/30 text-gray-900 pb-24">
+    <div
+      className={`min-h-screen bg-amber-50/30 text-gray-900 transition-all ${
+        cart.length > 0 ? "pb-32" : "pb-24"
+      }`}
+    >
       {/* Top Banner / Restaurant Info */}
       <header className="bg-white border-b border-amber-100 shadow-sm sticky top-0 z-30">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -745,6 +749,41 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Floating Bottom Cart Bar (Shown when items are selected in cart) */}
+      {cart.length > 0 && !isCartOpen && (
+        <div className="fixed bottom-4 left-4 right-4 max-w-lg mx-auto z-40 animate-in slide-in-from-bottom-4 duration-200">
+          <button
+            onClick={() => setIsCartOpen(true)}
+            className="w-full bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 hover:from-amber-700 hover:to-amber-900 text-white rounded-2xl p-3 shadow-2xl shadow-amber-900/40 flex items-center justify-between transition-all active:scale-[0.98] border border-amber-400/40"
+          >
+            {/* Left: Item Count & Total */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-black">
+                <ShoppingBag className="w-5 h-5 text-white" />
+              </div>
+              <div className="text-left">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-amber-200">
+                    {cart.reduce((s, i) => s + i.quantity, 0)} {cart.reduce((s, i) => s + i.quantity, 0) === 1 ? "item" : "items"}
+                  </span>
+                  <span className="text-amber-300">•</span>
+                  <span className="text-base font-black">₹{cartTotal}</span>
+                </div>
+                <p className="text-[11px] text-amber-100/90 line-clamp-1 max-w-[200px] sm:max-w-[260px]">
+                  {cart.map((c) => `${c.quantity}x ${c.name}`).join(", ")}
+                </p>
+              </div>
+            </div>
+
+            {/* Right: View Cart Button */}
+            <div className="flex items-center gap-1.5 bg-white text-amber-900 font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-sm hover:bg-amber-50">
+              <span>View Cart</span>
+              <ChevronRight className="w-4 h-4 text-amber-800" />
+            </div>
+          </button>
+        </div>
+      )}
 
       {/* 2-Step Cart Drawer */}
       <CartDrawer

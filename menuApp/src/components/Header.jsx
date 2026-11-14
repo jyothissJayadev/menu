@@ -7,7 +7,7 @@ import { useApp } from '../context/AppContext';
 import { PhoneNotch } from './PhoneNotch';
 
 export const Header = ({ title = 'Cake Kitchen Hub', subtitle }) => {
-  const { isShopOpen, setIsShopOpen, stats, simulateIncomingOrder } = useApp();
+  const { company, isShopOpen, setIsShopOpen, stats, simulateIncomingOrder } = useApp();
 
   return (
     <View style={styles.headerWrapper}>
@@ -21,8 +21,12 @@ export const Header = ({ title = 'Cake Kitchen Hub', subtitle }) => {
               <Ionicons name="gift" size={20} color={COLORS.surface} />
             </View>
             <View>
-              <Text style={styles.brandName}>Sweet Delights</Text>
-              <Text style={styles.brandTagline}>Cake Studio & Kitchen</Text>
+              <Text style={styles.brandName}>
+                {company ? company.name : 'Lavino Cake Studio'}
+              </Text>
+              <Text style={styles.brandTagline}>
+                {company && company.location ? `${company.location} • Cake Studio & Kitchen` : 'Cherupuzha • Cake Studio & Kitchen'}
+              </Text>
             </View>
           </View>
 
