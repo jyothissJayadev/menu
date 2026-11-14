@@ -5,41 +5,45 @@ import Item from "../models/Item.schema.js";
 import Addon from "../models/Addon.schema.js";
 import TopPick from "../models/TopPick.schema.js";
 import { isNowInWindows } from "../utils/timing.js";
-import { authenticate, authorizeRole } from "../middlewares/auth.middleware.js";
 
 const router = express.Router({ mergeParams: true });
 
 /**
  * GET /api/companies/:companyId/menu
- * returns categories with items filtered by availability/timing
+ * Returns categories with items.
+ * Query: ?all=true => returns all items for staff app (including out-of-stock items)
  */
 router.get("/", async (req, res) => {
   try {
     const companyId = req.params.companyId || req.companyId;
+    const includeAll = req.query.all === "true";
+
     const categories = await Category.find({ companyId })
-      .sort({ position: 1 })
+      .sort({ position: 1, createdAt: 1 })
       .lean();
     const items = await Item.find({ companyId }).lean();
 
-    // filter items by available flag and item timing
-    const nowFiltered = items.filter(
-      (it) => it.available && isNowInWindows(it.timing)
-    );
+    // Map items by category
     const mapByCat = {};
-    nowFiltered.forEach((it) => {
+    items.forEach((it) => {
       const key = String(it.categoryId);
       if (!mapByCat[key]) mapByCat[key] = [];
-      mapByCat[key].push(it);
+
+      // For customer menu, filter by timing windows; staff gets all
+      if (includeAll || isNowInWindows(it.timing)) {
+        mapByCat[key].push(it);
+      }
     });
 
-    const result = categories.map((cat) => ({
-      ...cat,
-      items: (mapByCat[String(cat._id)] || []).filter((it) =>
-        isNowInWindows(cat.timing)
-      ),
-    }));
+    // Only categories that have items (or all categories if staff requested)
+    const resultCategories = categories
+      .map((cat) => ({
+        ...cat,
+        items: mapByCat[String(cat._id)] || [],
+      }))
+      .filter((cat) => (includeAll ? true : cat.items.length > 0));
 
-    res.json({ categories: result });
+    res.json({ categories: resultCategories, allItems: items });
   } catch (err) {
     console.error("get menu err", err);
     res.status(500).json({ error: "Server error" });
@@ -48,101 +52,195 @@ router.get("/", async (req, res) => {
 
 /**
  * POST /api/companies/:companyId/menu/categories
- * create category (owner/manager)
+ * Create category
  */
-router.post(
-  "/categories",
-  authenticate,
-  authorizeRole("owner", "manager"),
-  async (req, res) => {
-    try {
-      const companyId = req.params.companyId || req.companyId;
-      const { name, timing = [], position = 0 } = req.body;
-      if (!name) return res.status(400).json({ error: "Name required" });
-      const cat = await Category.create({ companyId, name, timing, position });
-      res.status(201).json(cat);
-    } catch (err) {
-      console.error("create category err", err);
-      res.status(500).json({ error: "Server error" });
+router.post("/categories", async (req, res) => {
+  try {
+    const companyId = req.params.companyId || req.companyId;
+    const { name, position = 0 } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: "Category name required" });
+
+    // Check if category name exists
+    let cat = await Category.findOne({
+      companyId,
+      name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
+    });
+
+    if (!cat) {
+      cat = await Category.create({ companyId, name: name.trim(), position });
     }
+
+    res.status(201).json(cat);
+  } catch (err) {
+    console.error("create category err", err);
+    res.status(500).json({ error: "Server error" });
   }
-);
+});
+
+/**
+ * DELETE /api/companies/:companyId/menu/categories/:categoryId
+ */
+router.delete("/categories/:categoryId", async (req, res) => {
+  try {
+    const companyId = req.params.companyId || req.companyId;
+    const { categoryId } = req.params;
+
+    await Category.deleteOne({ _id: categoryId, companyId });
+    await Item.deleteMany({ categoryId, companyId });
+
+    res.json({ success: true, message: "Category and associated items deleted" });
+  } catch (err) {
+    console.error("delete category err", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 /**
  * POST /api/companies/:companyId/menu/items
- * create item (owner/manager)
+ * Create new cake / menu item
  */
-router.post(
-  "/items",
-  authenticate,
-  authorizeRole("owner", "manager"),
-  async (req, res) => {
-    try {
-      const companyId = req.params.companyId || req.companyId;
-      const {
-        categoryId,
-        name,
-        description = "",
-        price,
-        image = "",
-        veg = true,
-        offer = false,
-        offerPrice = null,
-        timing = [],
-        available = true,
-      } = req.body;
-      if (!categoryId || !name || typeof price === "undefined")
-        return res.status(400).json({ error: "Missing fields" });
-      const item = await Item.create({
-        companyId,
-        categoryId,
-        name,
-        description,
-        price,
-        image,
-        veg,
-        offer,
-        offerPrice,
-        timing,
-        available,
-      });
-      res.status(201).json(item);
-    } catch (err) {
-      console.error("create item err", err);
-      res.status(500).json({ error: "Server error" });
+router.post("/items", async (req, res) => {
+  try {
+    const companyId = req.params.companyId || req.companyId;
+    const {
+      categoryId,
+      categoryName,
+      name,
+      description = "",
+      price,
+      image = "",
+      veg = true,
+      offer = false,
+      offerPrice = null,
+      available = true,
+    } = req.body;
+
+    if (!name || typeof price === "undefined") {
+      return res.status(400).json({ error: "Name and price are required" });
     }
+
+    let targetCatId = categoryId;
+
+    // If new category name provided, find or create it
+    if (categoryName && categoryName.trim()) {
+      let cat = await Category.findOne({
+        companyId,
+        name: { $regex: new RegExp(`^${categoryName.trim()}$`, "i") },
+      });
+      if (!cat) {
+        cat = await Category.create({
+          companyId,
+          name: categoryName.trim(),
+          position: 99,
+        });
+      }
+      targetCatId = cat._id;
+    }
+
+    if (!targetCatId) {
+      return res.status(400).json({ error: "Valid categoryId or categoryName is required" });
+    }
+
+    const item = await Item.create({
+      companyId,
+      categoryId: targetCatId,
+      name: name.trim(),
+      description: description.trim(),
+      price: Number(price),
+      image,
+      veg,
+      offer: Boolean(offer),
+      offerPrice: offer && offerPrice ? Number(offerPrice) : null,
+      available: available !== undefined ? Boolean(available) : true,
+      timing: [],
+    });
+
+    res.status(201).json(item);
+  } catch (err) {
+    console.error("create item err", err);
+    res.status(500).json({ error: err.message || "Server error" });
   }
-);
+});
 
 /**
  * PUT /api/companies/:companyId/menu/items/:itemId
- * update item (owner/manager)
+ * Update cake / menu item (e.g. stock toggle, price edit)
  */
-router.put(
-  "/items/:itemId",
-  authenticate,
-  authorizeRole("owner", "manager"),
-  async (req, res) => {
-    try {
-      const companyId = req.params.companyId || req.companyId;
-      const { itemId } = req.params;
-      const changes = req.body;
-      const item = await Item.findOneAndUpdate(
-        { _id: itemId, companyId },
-        changes,
-        { new: true }
-      );
-      if (!item) return res.status(404).json({ error: "Item not found" });
-      res.json(item);
-    } catch (err) {
-      console.error("update item err", err);
-      res.status(500).json({ error: "Server error" });
+router.put("/items/:itemId", async (req, res) => {
+  try {
+    const companyId = req.params.companyId || req.companyId;
+    const { itemId } = req.params;
+    const updates = req.body;
+
+    // If changing category name
+    if (updates.categoryName && updates.categoryName.trim()) {
+      let cat = await Category.findOne({
+        companyId,
+        name: { $regex: new RegExp(`^${updates.categoryName.trim()}$`, "i") },
+      });
+      if (!cat) {
+        cat = await Category.create({
+          companyId,
+          name: updates.categoryName.trim(),
+          position: 99,
+        });
+      }
+      updates.categoryId = cat._id;
+      delete updates.categoryName;
     }
+
+    const item = await Item.findOneAndUpdate(
+      { _id: itemId, companyId },
+      updates,
+      { new: true }
+    );
+
+    if (!item) return res.status(404).json({ error: "Item not found" });
+
+    // Check if any category is left with 0 items and prune it
+    const allItems = await Item.find({ companyId }).lean();
+    const activeCatIds = new Set(allItems.map((i) => String(i.categoryId)));
+    await Category.deleteMany({
+      companyId,
+      _id: { $nin: Array.from(activeCatIds) },
+    });
+
+    res.json(item);
+  } catch (err) {
+    console.error("update item err", err);
+    res.status(500).json({ error: "Server error" });
   }
-);
+});
 
 /**
- * GET /api/companies/:companyId/items/:itemId/addons
+ * DELETE /api/companies/:companyId/menu/items/:itemId
+ * Delete an item and automatically prune empty categories!
+ */
+router.delete("/items/:itemId", async (req, res) => {
+  try {
+    const companyId = req.params.companyId || req.companyId;
+    const { itemId } = req.params;
+
+    const item = await Item.findOneAndDelete({ _id: itemId, companyId });
+    if (!item) return res.status(404).json({ error: "Item not found" });
+
+    // Auto-prune categories that now have 0 items
+    const remainingItems = await Item.find({ companyId }).lean();
+    const activeCatIds = new Set(remainingItems.map((i) => String(i.categoryId)));
+    await Category.deleteMany({
+      companyId,
+      _id: { $nin: Array.from(activeCatIds) },
+    });
+
+    res.json({ success: true, deletedId: itemId });
+  } catch (err) {
+    console.error("delete item err", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * GET /api/companies/:companyId/menu/items/:itemId/addons
  */
 router.get("/items/:itemId/addons", async (req, res) => {
   try {
@@ -157,41 +255,7 @@ router.get("/items/:itemId/addons", async (req, res) => {
 });
 
 /**
- * POST /api/companies/:companyId/items/:itemId/addons
- */
-router.post(
-  "/items/:itemId/addons",
-  authenticate,
-  authorizeRole("owner", "manager"),
-  async (req, res) => {
-    try {
-      const companyId = req.params.companyId || req.companyId;
-      const { itemId } = req.params;
-      const {
-        categoryName = "Addons",
-        name,
-        price = 0,
-        included = false,
-      } = req.body;
-      if (!name) return res.status(400).json({ error: "Name required" });
-      const addon = await Addon.create({
-        companyId,
-        itemId,
-        categoryName,
-        name,
-        price,
-        included,
-      });
-      res.status(201).json(addon);
-    } catch (err) {
-      console.error("create addon err", err);
-      res.status(500).json({ error: "Server error" });
-    }
-  }
-);
-
-/**
- * GET /api/companies/:companyId/top-picks
+ * GET /api/companies/:companyId/menu/top-picks
  */
 router.get("/top-picks", async (req, res) => {
   try {
@@ -206,31 +270,5 @@ router.get("/top-picks", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
-
-/**
- * POST /api/companies/:companyId/top-picks
- */
-router.post(
-  "/top-picks",
-  authenticate,
-  authorizeRole("owner", "manager"),
-  async (req, res) => {
-    try {
-      const companyId = req.params.companyId || req.companyId;
-      const { itemId, included = true, position = 0 } = req.body;
-      if (!itemId) return res.status(400).json({ error: "itemId required" });
-      const tp = await TopPick.create({
-        companyId,
-        itemId,
-        included,
-        position,
-      });
-      res.status(201).json(tp);
-    } catch (err) {
-      console.error("create top pick err", err);
-      res.status(500).json({ error: "Server error" });
-    }
-  }
-);
 
 export default router;

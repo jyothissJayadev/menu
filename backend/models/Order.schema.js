@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+
 const OrderItemSubSchema = new mongoose.Schema(
   {
     itemId: {
@@ -22,19 +23,21 @@ const OrderSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    orderNo: { type: String, required: true, index: true }, // day-based order id (e.g., YYYYMMDD-0001)
+    orderNo: { type: String, required: true, index: true }, // ORD-101
+    orderNumber: { type: Number, index: true },             // 101
     items: { type: [OrderItemSubSchema], default: [] },
     startTime: { type: Date, default: Date.now },
     endTime: { type: Date },
     durationMinutes: { type: Number },
-    table: { type: String },
+    table: { type: String, default: "Takeaway" },
     status: {
       type: String,
-      enum: ["pending", "preparing", "served", "completed", "cancelled"],
+      enum: ["pending", "preparing", "cooking", "served", "completed", "delivered", "cancelled"],
       default: "pending",
     },
     name: { type: String }, // customer name
     phone: { type: String }, // customer phone
+    notes: { type: String, default: "" }, // custom message / cake inscription
     total: { type: Number, required: true },
   },
   { timestamps: true }

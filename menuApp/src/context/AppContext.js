@@ -1,42 +1,96 @@
 // src/context/AppContext.js
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect, useRef } from 'react';
 import {
   INITIAL_CATEGORIES,
   INITIAL_ITEMS,
   INITIAL_ORDERS,
   INITIAL_CUSTOMERS,
 } from '../data/initialData';
+import * as api from '../services/api';
 
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
+  const [company, setCompany] = useState(null);
   const [items, setItems] = useState(INITIAL_ITEMS);
-
-  // Only categories that currently have at least one item assigned exist in the app
-  const [categories, setCategories] = useState(() => {
-    const activeCatIds = new Set(INITIAL_ITEMS.map((i) => i.categoryId));
-    return INITIAL_CATEGORIES.filter((c) => activeCatIds.has(c._id));
-  });
-
+  const [categories, setCategories] = useState(INITIAL_CATEGORIES);
   const [orders, setOrders] = useState(INITIAL_ORDERS);
   const [customers, setCustomers] = useState(INITIAL_CUSTOMERS);
   const [isShopOpen, setIsShopOpen] = useState(true);
   const [activeStatusFilter, setActiveStatusFilter] = useState('all');
+  const [isLiveConnected, setIsLiveConnected] = useState(false);
+
+  const companyRef = useRef(null);
+
+  // 1. Initial Load: Connect to backend and fetch company, menu & orders
+  useEffect(() => {
+    let isMounted = true;
+
+    async function initBackend() {
+      try {
+        const comp = await api.getCompany();
+        if (comp && isMounted) {
+          setCompany(comp);
+          companyRef.current = comp;
+          setIsLiveConnected(true);
+
+          // Fetch Menu
+          const menuData = await api.getMenu(comp._id);
+          if (menuData && isMounted) {
+            if (menuData.categories && menuData.categories.length > 0) {
+              setCategories(menuData.categories);
+            }
+            if (menuData.allItems && menuData.allItems.length > 0) {
+              setItems(menuData.allItems);
+            }
+          }
+
+          // Fetch Orders
+          const liveOrders = await api.getOrders(comp._id);
+          if (liveOrders && Array.isArray(liveOrders) && liveOrders.length > 0 && isMounted) {
+            setOrders(liveOrders);
+          }
+        }
+      } catch (err) {
+        console.warn('Backend init fallback to local store:', err);
+      }
+    }
+
+    initBackend();
+
+    // 2. Real-time Polling: Check for new customer orders from web menu every 3 seconds
+    const pollInterval = setInterval(async () => {
+      const activeComp = companyRef.current;
+      if (activeComp && activeComp._id) {
+        try {
+          const latestOrders = await api.getOrders(activeComp._id);
+          if (latestOrders && Array.isArray(latestOrders) && isMounted) {
+            setOrders(latestOrders);
+          }
+        } catch (_) {}
+      }
+    }, 3000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollInterval);
+    };
+  }, []);
 
   // --- ORDER ACTIONS ---
 
   /**
-   * Advances order status to next stage:
-   * pending -> cooking -> completed -> delivered
+   * Advances order status to next stage
    */
-  const updateOrderStatus = (orderId, newStatus) => {
+  const updateOrderStatus = async (orderId, newStatus) => {
+    // Optimistic local update
     setOrders((prev) =>
       prev.map((order) => {
         if (order._id !== orderId) return order;
 
         const updated = { ...order, status: newStatus };
 
-        if (newStatus === 'completed' || newStatus === 'delivered') {
+        if (newStatus === 'completed' || newStatus === 'delivered' || newStatus === 'served') {
           if (!updated.endTime) {
             updated.endTime = new Date().toISOString();
             const startMs = new Date(updated.startTime).getTime();
@@ -47,16 +101,19 @@ export const AppProvider = ({ children }) => {
         return updated;
       })
     );
+
+    // Sync with backend API
+    if (company && company._id) {
+      await api.updateOrderStatus(company._id, orderId, newStatus);
+    }
   };
 
   /**
-   * Reverts order status backwards:
-   * cooking -> pending
-   * completed -> cooking (clears completion timestamp & duration)
-   * delivered -> completed
-   * cancelled -> pending
+   * Reverts order status backwards
    */
-  const revertOrderStatus = (orderId) => {
+  const revertOrderStatus = async (orderId) => {
+    let nextStatus = 'pending';
+
     setOrders((prev) =>
       prev.map((order) => {
         if (order._id !== orderId) return order;
@@ -64,9 +121,9 @@ export const AppProvider = ({ children }) => {
         let prevStatus = order.status;
         const updated = { ...order };
 
-        if (order.status === 'cooking') {
+        if (order.status === 'cooking' || order.status === 'preparing') {
           prevStatus = 'pending';
-        } else if (order.status === 'completed') {
+        } else if (order.status === 'completed' || order.status === 'served') {
           prevStatus = 'cooking';
           delete updated.endTime;
           delete updated.durationMinutes;
@@ -77,16 +134,22 @@ export const AppProvider = ({ children }) => {
           delete updated.cancelReason;
         }
 
+        nextStatus = prevStatus;
         updated.status = prevStatus;
         return updated;
       })
     );
+
+    // Sync with backend API
+    if (company && company._id) {
+      await api.updateOrderStatus(company._id, orderId, nextStatus);
+    }
   };
 
   /**
    * Cancel an order
    */
-  const cancelOrder = (orderId, reason = 'Cancelled by shop') => {
+  const cancelOrder = async (orderId, reason = 'Cancelled by shop') => {
     setOrders((prev) =>
       prev.map((order) =>
         order._id === orderId
@@ -94,52 +157,23 @@ export const AppProvider = ({ children }) => {
           : order
       )
     );
+
+    if (company && company._id) {
+      await api.updateOrderStatus(company._id, orderId, 'cancelled');
+    }
   };
 
   /**
    * Simulate a new incoming customer order from the Web Menu
-   * Uses continuous, sequential incrementing order numbers (does NOT reset daily,
-   * avoiding collisions for advance pre-orders placed a day or a week ahead).
    */
-  const simulateIncomingOrder = () => {
-    const randomItemsPool = [
-      {
-        itemId: 'item-101',
-        name: 'Belgian Truffle Chocolate Cake (1kg)',
-        qty: 1,
-        price: 750,
-        addons: ['Golden Birthday Candle'],
-      },
-      {
-        itemId: 'item-103',
-        name: 'New York Baked Blueberry Cheesecake',
-        qty: 1,
-        price: 280,
-        addons: [],
-      },
-      {
-        itemId: 'item-105',
-        name: 'French Butter Croissant',
-        qty: 2,
-        price: 140,
-        addons: ['Extra Butter'],
-      },
-      {
-        itemId: 'item-107',
-        name: 'Iced Hazelnut Mocha Latte',
-        qty: 1,
-        price: 210,
-        addons: [],
-      },
-    ];
-
+  const simulateIncomingOrder = async () => {
+    const randomItemsPool = items.length > 0 ? items : INITIAL_ITEMS;
     const randomPick = randomItemsPool.slice(0, Math.floor(Math.random() * 2) + 1);
-    const totalCalc = randomPick.reduce((sum, item) => sum + item.price * item.qty, 0);
+    const totalCalc = randomPick.reduce((sum, item) => sum + item.price * (item.qty || 1), 0);
 
     const names = ['Kavita Rao', 'Siddharth Sen', 'Divya Menon', 'Rahul Kapoor', 'Tanya Bansal'];
     const selectedName = names[Math.floor(Math.random() * names.length)];
 
-    // Continuous sequential order number
     const maxOrderNum = orders.reduce(
       (max, o) => Math.max(max, o.orderNumber || 100),
       100
@@ -147,35 +181,51 @@ export const AppProvider = ({ children }) => {
     const nextOrderNumber = maxOrderNum + 1;
     const uniqueOrderNo = `ORD-${nextOrderNumber}`;
 
-    const newOrder = {
-      _id: `ord-${Date.now()}`,
-      orderNumber: nextOrderNumber, // Continuous sequential counter
+    const orderPayload = {
+      orderNumber: nextOrderNumber,
       orderNo: uniqueOrderNo,
-      customerName: selectedName,
+      name: selectedName,
       phone: `+91 9${Math.floor(100000000 + Math.random() * 900000000)}`,
       table: Math.random() > 0.5 ? `Table ${Math.floor(Math.random() * 6) + 1}` : 'Takeaway',
-      status: 'pending',
-      total: totalCalc,
-      startTime: new Date().toISOString(),
-      notes: 'New live web order! Please confirm quickly.',
+      notes: 'Test order generated from staff dashboard.',
       items: randomPick.map((it) => ({
-        ...it,
-        orderIdRef: uniqueOrderNo,
+        itemId: it._id,
+        name: it.name,
+        qty: 1,
+        price: it.offer && it.offerPrice ? it.offerPrice : it.price,
+        addons: [],
       })),
+      total: totalCalc,
     };
 
-    setOrders((prev) => [newOrder, ...prev]);
-    return newOrder;
+    // If live connected, create in backend
+    if (company && company._id) {
+      try {
+        const createdOrder = await api.createOrder(company._id, orderPayload);
+        if (createdOrder) {
+          setOrders((prev) => [createdOrder, ...prev]);
+          return createdOrder;
+        }
+      } catch (_) {}
+    }
+
+    // Local fallback
+    const localOrder = {
+      _id: `ord-${Date.now()}`,
+      ...orderPayload,
+      status: 'pending',
+      startTime: new Date().toISOString(),
+    };
+    setOrders((prev) => [localOrder, ...prev]);
+    return localOrder;
   };
 
   // --- MENU ITEM & CATEGORY ACTIONS ---
 
   /**
-   * Add a new cake/item to the menu.
-   * If newCategoryName is provided, the category is created and linked to this item.
-   * A category only exists if it has at least one item assigned; otherwise it is removed.
+   * Add a new cake/item to the menu
    */
-  const addItem = (itemData, newCategoryName = null) => {
+  const addItem = async (itemData, newCategoryName = null) => {
     let targetCatId = itemData.categoryId;
     let updatedCategories = [...categories];
 
@@ -212,16 +262,31 @@ export const AppProvider = ({ children }) => {
     const updatedItems = [newItem, ...items];
     setItems(updatedItems);
 
-    // Keep ONLY categories that have at least one item assigned
-    const activeCatIds = new Set(updatedItems.map((i) => i.categoryId));
-    setCategories(updatedCategories.filter((cat) => activeCatIds.has(cat._id)));
+    const activeCatIds = new Set(updatedItems.map((i) => String(i.categoryId)));
+    setCategories(updatedCategories.filter((cat) => activeCatIds.has(String(cat._id))));
+
+    // Sync with backend API
+    if (company && company._id) {
+      const backendCreated = await api.createMenuItem(company._id, {
+        ...itemData,
+        categoryId: targetCatId,
+        categoryName: newCategoryName,
+      });
+      if (backendCreated) {
+        // Refresh live menu from backend
+        const freshMenu = await api.getMenu(company._id);
+        if (freshMenu) {
+          if (freshMenu.categories) setCategories(freshMenu.categories);
+          if (freshMenu.allItems) setItems(freshMenu.allItems);
+        }
+      }
+    }
   };
 
   /**
-   * Update an existing menu item.
-   * If the item's category changes and its old category now has 0 items, that category is removed.
+   * Update an existing menu item
    */
-  const updateItem = (itemId, updatedFields, newCategoryName = null) => {
+  const updateItem = async (itemId, updatedFields, newCategoryName = null) => {
     let targetCatId = updatedFields.categoryId;
     let updatedCategories = [...categories];
 
@@ -247,33 +312,52 @@ export const AppProvider = ({ children }) => {
     );
     setItems(updatedItems);
 
-    // Keep ONLY categories that have at least one item assigned
-    const activeCatIds = new Set(updatedItems.map((i) => i.categoryId));
-    setCategories(updatedCategories.filter((cat) => activeCatIds.has(cat._id)));
+    const activeCatIds = new Set(updatedItems.map((i) => String(i.categoryId)));
+    setCategories(updatedCategories.filter((cat) => activeCatIds.has(String(cat._id))));
+
+    // Sync with backend API
+    if (company && company._id) {
+      await api.updateMenuItem(company._id, itemId, {
+        ...updatedFields,
+        categoryId: targetCatId,
+        categoryName: newCategoryName,
+      });
+    }
   };
 
   /**
-   * Delete an item from the menu.
-   * If its category now has 0 items linked, that category is automatically removed.
+   * Delete an item from the menu
    */
-  const deleteItem = (itemId) => {
+  const deleteItem = async (itemId) => {
     const updatedItems = items.filter((it) => it._id !== itemId);
     setItems(updatedItems);
 
-    // Keep ONLY categories that have at least one item assigned
-    const activeCatIds = new Set(updatedItems.map((i) => i.categoryId));
-    setCategories((prevCats) => prevCats.filter((cat) => activeCatIds.has(cat._id)));
+    const activeCatIds = new Set(updatedItems.map((i) => String(i.categoryId)));
+    setCategories((prevCats) => prevCats.filter((cat) => activeCatIds.has(String(cat._id))));
+
+    // Sync with backend API
+    if (company && company._id) {
+      await api.deleteMenuItem(company._id, itemId);
+    }
   };
 
   /**
    * Toggle availability (in stock vs out of stock)
    */
-  const toggleItemAvailability = (itemId) => {
+  const toggleItemAvailability = async (itemId) => {
+    const targetItem = items.find((i) => i._id === itemId);
+    const newAvailable = targetItem ? !targetItem.available : true;
+
     setItems((prev) =>
       prev.map((it) =>
-        it._id === itemId ? { ...it, available: !it.available } : it
+        it._id === itemId ? { ...it, available: newAvailable } : it
       )
     );
+
+    // Sync with backend API
+    if (company && company._id) {
+      await api.updateMenuItem(company._id, itemId, { available: newAvailable });
+    }
   };
 
   // --- COMPUTED ANALYTICS ---
@@ -281,13 +365,13 @@ export const AppProvider = ({ children }) => {
     const activeOrders = orders.filter((o) => o.status !== 'cancelled');
     const totalRev = activeOrders.reduce((sum, o) => sum + (o.total || 0), 0);
     const pendingCount = orders.filter((o) => o.status === 'pending').length;
-    const cookingCount = orders.filter((o) => o.status === 'cooking').length;
-    const completedCount = orders.filter((o) => o.status === 'completed').length;
+    const cookingCount = orders.filter((o) => o.status === 'cooking' || o.status === 'preparing').length;
+    const completedCount = orders.filter((o) => o.status === 'completed' || o.status === 'served').length;
     const deliveredCount = orders.filter((o) => o.status === 'delivered').length;
     const cancelledCount = orders.filter((o) => o.status === 'cancelled').length;
 
     const completedOrDelivered = orders.filter(
-      (o) => (o.status === 'completed' || o.status === 'delivered') && o.durationMinutes
+      (o) => (o.status === 'completed' || o.status === 'delivered' || o.status === 'served') && o.durationMinutes
     );
     const avgDuration =
       completedOrDelivered.length > 0
@@ -313,6 +397,8 @@ export const AppProvider = ({ children }) => {
   }, [orders]);
 
   const value = {
+    company,
+    isLiveConnected,
     categories,
     items,
     orders,
