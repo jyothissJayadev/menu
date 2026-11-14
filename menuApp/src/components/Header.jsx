@@ -4,82 +4,90 @@ import { View, Text, StyleSheet, TouchableOpacity, Switch, Platform } from 'reac
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../theme/colors';
 import { useApp } from '../context/AppContext';
+import { PhoneNotch } from './PhoneNotch';
 
 export const Header = ({ title = 'Cake Kitchen Hub', subtitle }) => {
   const { isShopOpen, setIsShopOpen, stats, simulateIncomingOrder } = useApp();
 
   return (
-    <View style={styles.container}>
-      <View style={styles.topRow}>
-        <View style={styles.brandContainer}>
-          <View style={styles.logoBadge}>
-            <Ionicons name="gift" size={20} color={COLORS.surface} />
-          </View>
-          <View>
-            <Text style={styles.brandName}>Sweet Delights</Text>
-            <Text style={styles.brandTagline}>Cake Studio & Kitchen</Text>
-          </View>
-        </View>
+    <View style={styles.headerWrapper}>
+      {/* Phone Notch & Status Bar */}
+      <PhoneNotch />
 
-        <View style={styles.actionsRow}>
-          {/* Simulate Order Button for Quick Test */}
-          <TouchableOpacity
-            style={styles.testOrderButton}
-            onPress={() => simulateIncomingOrder()}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="flash" size={14} color={COLORS.primaryDark} />
-            <Text style={styles.testOrderText}>+ Test Order</Text>
-          </TouchableOpacity>
-
-          {/* Shop Open / Closed Toggle */}
-          <View style={styles.statusToggleContainer}>
-            <View
-              style={[
-                styles.statusIndicator,
-                { backgroundColor: isShopOpen ? COLORS.success : COLORS.danger },
-              ]}
-            />
-            <Text style={styles.statusLabel}>{isShopOpen ? 'Open' : 'Paused'}</Text>
-            <Switch
-              value={isShopOpen}
-              onValueChange={setIsShopOpen}
-              trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
-              thumbColor={isShopOpen ? COLORS.primary : '#ccc'}
-              style={Platform.OS === 'web' ? { transform: [{ scale: 0.8 }] } : { transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
-            />
-          </View>
-        </View>
-      </View>
-
-      {/* Screen Title Row */}
-      {title && (
-        <View style={styles.titleRow}>
-          <Text style={styles.screenTitle}>{title}</Text>
-          {stats.pendingCount > 0 && (
-            <View style={styles.pendingBadge}>
-              <Ionicons name="notifications" size={12} color={COLORS.textWhite} />
-              <Text style={styles.pendingBadgeText}>
-                {stats.pendingCount} New Pending
-              </Text>
+      <View style={styles.container}>
+        <View style={styles.topRow}>
+          <View style={styles.brandContainer}>
+            <View style={styles.logoBadge}>
+              <Ionicons name="gift" size={20} color={COLORS.surface} />
             </View>
-          )}
+            <View>
+              <Text style={styles.brandName}>Sweet Delights</Text>
+              <Text style={styles.brandTagline}>Cake Studio & Kitchen</Text>
+            </View>
+          </View>
+
+          <View style={styles.actionsRow}>
+            {/* Simulate Order Button for Quick Test */}
+            <TouchableOpacity
+              style={styles.testOrderButton}
+              onPress={() => simulateIncomingOrder()}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="flash" size={14} color={COLORS.primaryDark} />
+              <Text style={styles.testOrderText}>+ Test Order</Text>
+            </TouchableOpacity>
+
+            {/* Shop Open / Closed Toggle */}
+            <View style={styles.statusToggleContainer}>
+              <View
+                style={[
+                  styles.statusIndicator,
+                  { backgroundColor: isShopOpen ? COLORS.success : COLORS.danger },
+                ]}
+              />
+              <Text style={styles.statusLabel}>{isShopOpen ? 'Open' : 'Paused'}</Text>
+              <Switch
+                value={isShopOpen}
+                onValueChange={setIsShopOpen}
+                trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
+                thumbColor={isShopOpen ? COLORS.primary : '#ccc'}
+                style={Platform.OS === 'web' ? { transform: [{ scale: 0.8 }] } : { transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+              />
+            </View>
+          </View>
         </View>
-      )}
-      {subtitle && <Text style={styles.screenSubtitle}>{subtitle}</Text>}
+
+        {/* Screen Title Row */}
+        {title && (
+          <View style={styles.titleRow}>
+            <Text style={styles.screenTitle}>{title}</Text>
+            {stats.pendingCount > 0 && (
+              <View style={styles.pendingBadge}>
+                <Ionicons name="notifications" size={12} color={COLORS.textWhite} />
+                <Text style={styles.pendingBadgeText}>
+                  {stats.pendingCount} New Pending
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+        {subtitle && <Text style={styles.screenSubtitle}>{subtitle}</Text>}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  headerWrapper: {
     backgroundColor: COLORS.surface,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
     ...SHADOWS.sm,
+  },
+  container: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 12,
   },
   topRow: {
     flexDirection: 'row',

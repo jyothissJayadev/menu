@@ -1,5 +1,5 @@
 // src/context/AppContext.js
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import {
   INITIAL_CATEGORIES,
   INITIAL_ITEMS,
@@ -10,8 +10,14 @@ import {
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
-  const [categories, setCategories] = useState(INITIAL_CATEGORIES);
   const [items, setItems] = useState(INITIAL_ITEMS);
+
+  // Initialize categories, auto-pruning any category with 0 items on start
+  const [categories, setCategories] = useState(() => {
+    const initialItemCatIds = new Set(INITIAL_ITEMS.map((i) => i.categoryId));
+    return INITIAL_CATEGORIES.filter((c) => initialItemCatIds.has(c._id));
+  });
+
   const [orders, setOrders] = useState(INITIAL_ORDERS);
   const [customers, setCustomers] = useState(INITIAL_CUSTOMERS);
   const [isShopOpen, setIsShopOpen] = useState(true);
@@ -59,7 +65,6 @@ export const AppProvider = ({ children }) => {
 
   /**
    * Simulate a new incoming customer order from the Web Menu
-   * Useful for testing and interactive demo
    */
   const simulateIncomingOrder = () => {
     const randomItemsPool = [
@@ -121,38 +126,59 @@ export const AppProvider = ({ children }) => {
 
   /**
    * Add a new cake/item to the menu
+   * Auto-prunes any unused categories
    */
   const addItem = (itemData) => {
     const newItem = {
       _id: `item-${Date.now()}`,
-      categoryId: itemData.categoryId || categories[0]._id,
+      categoryId: itemData.categoryId || (categories[0] ? categories[0]._id : 'cat-1'),
       name: itemData.name,
       description: itemData.description || '',
       price: Number(itemData.price) || 0,
       offer: Boolean(itemData.offer),
       offerPrice: itemData.offer ? Number(itemData.offerPrice) || null : null,
-      veg: itemData.veg !== undefined ? Boolean(itemData.veg) : true,
       available: itemData.available !== undefined ? Boolean(itemData.available) : true,
-      image: itemData.image || 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500&auto=format&fit=crop&q=60',
+      image: itemData.image || '',
       timing: [],
     };
-    setItems((prev) => [newItem, ...prev]);
+
+    setItems((prevItems) => {
+      const updated = [newItem, ...prevItems];
+      // Keep only categories that have at least one item
+      const activeCatIds = new Set(updated.map((i) => i.categoryId));
+      setCategories((prevCats) => prevCats.filter((cat) => activeCatIds.has(cat._id)));
+      return updated;
+    });
   };
 
   /**
    * Update an existing menu item
+   * Auto-prunes categories if an item's category changed and previous category becomes empty
    */
   const updateItem = (itemId, updatedFields) => {
-    setItems((prev) =>
-      prev.map((it) => (it._id === itemId ? { ...it, ...updatedFields } : it))
-    );
+    setItems((prevItems) => {
+      const updated = prevItems.map((it) =>
+        it._id === itemId ? { ...it, ...updatedFields } : it
+      );
+      // Auto-prune empty categories
+      const activeCatIds = new Set(updated.map((i) => i.categoryId));
+      setCategories((prevCats) => prevCats.filter((cat) => activeCatIds.has(cat._id)));
+      return updated;
+    });
   };
 
   /**
    * Delete an item from the menu
+   * If a category no longer has any items, automatically removes that category!
    */
   const deleteItem = (itemId) => {
-    setItems((prev) => prev.filter((it) => it._id !== itemId));
+    setItems((prevItems) => {
+      const updated = prevItems.filter((it) => it._id !== itemId);
+      // Auto-prune: Remove any category that now has 0 items
+      const activeCatIds = new Set(updated.map((i) => i.categoryId));
+      setCategories((prevCats) => prevCats.filter((cat) => activeCatIds.has(cat._id)));
+      return updated;
+    });
   };
 
   /**
@@ -168,15 +194,39 @@ export const AppProvider = ({ children }) => {
 
   /**
    * Add a new category
+   * Added immediately to the list and becomes selectable for this and other items.
    */
-  const addCategory = (name, icon = 'bookmark') => {
+  const addCategory = (name, icon = 'gift') => {
+    const trimmed = name ? name.trim() : '';
+    if (!trimmed) return null;
+
+    // Check if category name already exists
+    const existing = categories.find(
+      (c) => c.name.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (existing) {
+      return existing;
+    }
+
     const newCat = {
       _id: `cat-${Date.now()}`,
-      name,
+      name: trimmed,
       icon,
       position: categories.length + 1,
     };
+
     setCategories((prev) => [...prev, newCat]);
+    return newCat;
+  };
+
+  /**
+   * Clean up any categories that have 0 items (e.g. if user created category but canceled)
+   */
+  const cleanupEmptyCategories = () => {
+    setCategories((prevCats) => {
+      const activeCatIds = new Set(items.map((i) => i.categoryId));
+      return prevCats.filter((cat) => activeCatIds.has(cat._id));
+    });
   };
 
   // --- COMPUTED ANALYTICS ---
@@ -232,6 +282,7 @@ export const AppProvider = ({ children }) => {
     deleteItem,
     toggleItemAvailability,
     addCategory,
+    cleanupEmptyCategories,
     stats,
   };
 

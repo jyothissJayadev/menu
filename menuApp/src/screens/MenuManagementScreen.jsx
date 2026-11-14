@@ -1,5 +1,5 @@
 // src/screens/MenuManagementScreen.jsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,16 @@ export const MenuManagementScreen = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
+  // If a category was deleted/pruned and was currently selected, reset filter to 'all'
+  useEffect(() => {
+    if (selectedCat !== 'all') {
+      const exists = categories.some((c) => c._id === selectedCat);
+      if (!exists) {
+        setSelectedCat('all');
+      }
+    }
+  }, [categories, selectedCat]);
+
   // Filter items
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -50,13 +60,13 @@ export const MenuManagementScreen = () => {
     };
 
     if (Platform.OS === 'web') {
-      if (window.confirm(`Are you sure you want to delete "${item.name}"?`)) {
+      if (window.confirm(`Are you sure you want to delete "${item.name}"? If this is the only item in its category, the category will also be removed automatically.`)) {
         doDelete();
       }
     } else {
       Alert.alert(
         'Delete Menu Item',
-        `Are you sure you want to remove "${item.name}" from the menu?`,
+        `Are you sure you want to remove "${item.name}"? If this is the only item in its category, the category will also be removed.`,
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Delete', style: 'destructive', onPress: doDelete },
@@ -74,7 +84,7 @@ export const MenuManagementScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <Header
         title="Menu & Cake Catalog"
-        subtitle="Add, edit or toggle availability for the web menu"
+        subtitle="Add, edit, or toggle availability for the web menu"
       />
 
       {/* Top Search & Add Button Bar */}
@@ -150,21 +160,19 @@ export const MenuManagementScreen = () => {
         renderItem={({ item }) => (
           <View style={[styles.itemCard, !item.available && styles.itemCardDisabled]}>
             <View style={styles.cardMain}>
-              {/* Image Thumbnail */}
+              {/* Image Thumbnail (100% veg option badge removed) */}
               <View style={styles.imageWrapper}>
-                <Image
-                  source={{ uri: item.image }}
-                  style={styles.thumbnail}
-                  resizeMode="cover"
-                />
-                <View
-                  style={[
-                    styles.dietBadge,
-                    { backgroundColor: item.veg ? COLORS.veg : COLORS.nonVeg },
-                  ]}
-                >
-                  <View style={styles.dietDot} />
-                </View>
+                {item.image ? (
+                  <Image
+                    source={{ uri: item.image }}
+                    style={styles.thumbnail}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.noImagePlaceholder}>
+                    <Ionicons name="gift-outline" size={30} color={COLORS.primary} />
+                  </View>
+                )}
               </View>
 
               {/* Item Details */}
@@ -371,28 +379,20 @@ const styles = StyleSheet.create({
     height: 90,
     borderRadius: 12,
     overflow: 'hidden',
-    position: 'relative',
     backgroundColor: COLORS.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   thumbnail: {
     width: '100%',
     height: '100%',
   },
-  dietBadge: {
-    position: 'absolute',
-    top: 6,
-    left: 6,
-    width: 14,
-    height: 14,
-    borderRadius: 3,
+  noImagePlaceholder: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  dietDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: COLORS.textWhite,
+    backgroundColor: COLORS.primaryLight,
   },
   itemInfo: {
     flex: 1,
