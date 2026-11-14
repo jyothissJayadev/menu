@@ -1,0 +1,171 @@
+// webMenu/src/context/CartContext.jsx
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { fetchCompany, fetchMenu } from "../api";
+
+const CartContext = createContext();
+
+const CART_STORAGE_KEY = "lavino_cart";
+const CUSTOMER_STORAGE_KEY = "lavino_customer";
+
+export const CartProvider = ({ children }) => {
+  // Load persisted cart from localStorage
+  const [cart, setCart] = useState(() => {
+    try {
+      const saved = localStorage.getItem(CART_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Load persisted customer details (name, phone, etc.) from localStorage
+  const [customerDetails, setCustomerDetails] = useState(() => {
+    try {
+      const saved = localStorage.getItem(CUSTOMER_STORAGE_KEY);
+      return saved
+        ? JSON.parse(saved)
+        : { name: "", phone: "", table: "Takeaway", notes: "" };
+    } catch {
+      return { name: "", phone: "", table: "Takeaway", notes: "" };
+    }
+  });
+
+  const [company, setCompany] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [menuItems, setMenuItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Sync cart to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+    } catch (err) {
+      console.warn("Error saving cart to localStorage:", err);
+    }
+  }, [cart]);
+
+  // Sync customer details to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify(customerDetails));
+    } catch (err) {
+      console.warn("Error saving customer details to localStorage:", err);
+    }
+  }, [customerDetails]);
+
+  // Fetch company & menu from backend API
+  useEffect(() => {
+    let isMounted = true;
+    async function loadData() {
+      try {
+        const comp = await fetchCompany();
+        if (comp && isMounted) {
+          setCompany(comp);
+          const menuData = await fetchMenu(comp._id);
+          if (menuData && isMounted) {
+            if (menuData.categories && menuData.categories.length > 0) {
+              setCategories(
+                menuData.categories.map((c) => ({
+                  id: c._id,
+                  name: c.name,
+                  position: c.position || 0,
+                }))
+              );
+            }
+            if (menuData.allItems && menuData.allItems.length > 0) {
+              setMenuItems(
+                menuData.allItems.map((i) => ({
+                  id: i._id,
+                  categoryId: String(i.categoryId),
+                  name: i.name,
+                  description: i.description,
+                  price: i.offer && i.offerPrice ? i.offerPrice : i.price,
+                  originalPrice: i.offer && i.offerPrice ? i.price : null,
+                  image: i.image,
+                  available: i.available !== undefined ? i.available : true,
+                  isBestseller: i.offer || false,
+                }))
+              );
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Error loading menu data:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const addToCart = (item) => {
+    setCart((prev) => {
+      const existing = prev.find((i) => i.id === item.id);
+      if (existing) {
+        return prev.map((i) =>
+          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
+        );
+      }
+      return [...prev, { ...item, quantity: 1 }];
+    });
+  };
+
+  const updateQuantity = (itemId, delta) => {
+    setCart((prev) =>
+      prev
+        .map((item) => {
+          if (item.id === itemId) {
+            const newQty = item.quantity + delta;
+            return newQty > 0 ? { ...item, quantity: newQty } : null;
+          }
+          return item;
+        })
+        .filter(Boolean)
+    );
+  };
+
+  const removeFromCart = (itemId) => {
+    setCart((prev) => prev.filter((i) => i.id !== itemId));
+  };
+
+  const clearCart = () => {
+    setCart([]);
+    try {
+      localStorage.removeItem(CART_STORAGE_KEY);
+    } catch {}
+  };
+
+  const cartTotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+
+  return (
+    <CartContext.Provider
+      value={{
+        company,
+        categories,
+        menuItems,
+        loading,
+        cart,
+        addToCart,
+        updateQuantity,
+        removeFromCart,
+        clearCart,
+        cartTotal,
+        cartCount,
+        customerDetails,
+        setCustomerDetails,
+      }}
+    >
+      {children}
+    </CartContext.Provider>
+  );
+};
+
+export const useCart = () => {
+  const context = useContext(CartContext);
+  if (!context) throw new Error("useCart must be used within a CartProvider");
+  return context;
+};
