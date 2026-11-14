@@ -168,3 +168,24 @@ export async function createCategory(companyId, name) {
     return null;
   }
 }
+
+/**
+ * Reorder categories by submitting updated array of category IDs
+ */
+export async function reorderCategories(companyId, orderedIds) {
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/companies/${companyId}/menu/categories/reorder`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderedIds }),
+      }
+    );
+    if (!res.ok) throw new Error('Failed to reorder categories');
+    return await res.json();
+  } catch (err) {
+    console.warn('API reorderCategories error:', err.message);
+    return null;
+  }
+}

@@ -19,7 +19,7 @@ import { COLORS, SHADOWS } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 
 export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
-  const { categories, addItem, updateItem } = useApp();
+  const { categories, items, addItem, updateItem, reorderCategories } = useApp();
 
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -62,6 +62,23 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
     setNewCatNameInput('');
     setAssignedNewCategoryName(null);
   }, [initialItem, visible, categories]);
+
+  // Sort categories by sequential position
+  const sortedCategories = React.useMemo(() => {
+    return [...categories].sort((a, b) => (a.position || 0) - (b.position || 0));
+  }, [categories]);
+
+  // Reorder categories up or down
+  const handleMoveCategory = (index, delta) => {
+    const newIndex = index + delta;
+    if (newIndex < 0 || newIndex >= sortedCategories.length) return;
+
+    const reordered = [...sortedCategories];
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(newIndex, 0, moved);
+
+    reorderCategories(reordered);
+  };
 
   // Handle image picking from phone storage
   const handlePickFromGallery = async () => {
@@ -230,7 +247,7 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
             {isDropdownOpen && (
               <View style={styles.dropdownMenu}>
                 <ScrollView nestedScrollEnabled style={{ maxHeight: 180 }}>
-                  {categories.map((cat) => {
+                  {sortedCategories.map((cat, idx) => {
                     const isSelected = !assignedNewCategoryName && categoryId === cat._id;
                     return (
                       <TouchableOpacity
@@ -245,14 +262,17 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
                           setIsDropdownOpen(false);
                         }}
                       >
-                        <Text
-                          style={[
-                            styles.dropdownItemText,
-                            isSelected && styles.dropdownItemTextActive,
-                          ]}
-                        >
-                          {cat.name}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={styles.dropdownItemPos}>#{idx + 1}</Text>
+                          <Text
+                            style={[
+                              styles.dropdownItemText,
+                              isSelected && styles.dropdownItemTextActive,
+                            ]}
+                          >
+                            {cat.name}
+                          </Text>
+                        </View>
                         {isSelected && (
                           <Ionicons name="checkmark" size={16} color={COLORS.primary} />
                         )}
@@ -301,6 +321,114 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
                 )}
               </View>
             )}
+
+            {/* Category Display Order & Reordering Section */}
+            <View style={styles.catOrderCard}>
+              <View style={styles.catOrderCardHeader}>
+                <View style={styles.catOrderTitleRow}>
+                  <Ionicons name="swap-vertical" size={15} color={COLORS.primaryDark} />
+                  <Text style={styles.catOrderCardTitle}>Category Display Order</Text>
+                </View>
+                <Text style={styles.catOrderCardSubtitle}>
+                  Order determines appearance in All section & web menu. Use ▲ and ▼ to reorder.
+                </Text>
+              </View>
+
+              <View style={styles.catOrderList}>
+                {sortedCategories.map((cat, idx) => {
+                  const isSelected = !assignedNewCategoryName && categoryId === cat._id;
+                  const count = items ? items.filter((i) => i.categoryId === cat._id).length : 0;
+                  const isFirst = idx === 0;
+                  const isLast = idx === sortedCategories.length - 1;
+
+                  return (
+                    <View
+                      key={cat._id}
+                      style={[
+                        styles.catOrderRow,
+                        isSelected && styles.catOrderRowSelected,
+                      ]}
+                    >
+                      <TouchableOpacity
+                        style={styles.catOrderSelectArea}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          setCategoryId(cat._id);
+                          setAssignedNewCategoryName(null);
+                          setIsDropdownOpen(false);
+                        }}
+                      >
+                        <View
+                          style={[
+                            styles.catOrderPosBadge,
+                            isSelected && styles.catOrderPosBadgeSelected,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.catOrderPosText,
+                              isSelected && styles.catOrderPosTextSelected,
+                            ]}
+                          >
+                            #{idx + 1}
+                          </Text>
+                        </View>
+
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text
+                              style={[
+                                styles.catOrderName,
+                                isSelected && styles.catOrderNameSelected,
+                              ]}
+                            >
+                              {cat.name}
+                            </Text>
+                            {isSelected && (
+                              <View style={styles.catOrderActiveTag}>
+                                <Ionicons name="checkmark" size={11} color={COLORS.primary} />
+                                <Text style={styles.catOrderActiveTagText}>Selected</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={styles.catOrderItemCount}>
+                            {count} {count === 1 ? 'cake' : 'cakes'}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+
+                      <View style={styles.catOrderBtnGroup}>
+                        <TouchableOpacity
+                          style={[styles.catArrowBtn, isFirst && styles.catArrowBtnDisabled]}
+                          disabled={isFirst}
+                          onPress={() => handleMoveCategory(idx, -1)}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        >
+                          <Ionicons
+                            name="chevron-up"
+                            size={16}
+                            color={isFirst ? COLORS.border : COLORS.primaryDark}
+                          />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[styles.catArrowBtn, isLast && styles.catArrowBtnDisabled]}
+                          disabled={isLast}
+                          onPress={() => handleMoveCategory(idx, 1)}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        >
+                          <Ionicons
+                            name="chevron-down"
+                            size={16}
+                            color={isLast ? COLORS.border : COLORS.primaryDark}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
 
             {/* Price & Offer Row */}
             <View style={styles.row}>
@@ -554,6 +682,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
   },
+  dropdownItemPos: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.primaryDark,
+    backgroundColor: COLORS.primaryLight,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
   dropdownItemActive: {
     backgroundColor: COLORS.primaryLight,
   },
@@ -622,6 +759,131 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: COLORS.textWhite,
+  },
+  catOrderCard: {
+    backgroundColor: '#FFFDF9',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 12,
+    marginTop: 10,
+    marginBottom: 6,
+    overflow: 'hidden',
+  },
+  catOrderCardHeader: {
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#FEF3C7',
+    backgroundColor: '#FEF9EE',
+  },
+  catOrderTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  catOrderCardTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  catOrderCardSubtitle: {
+    fontSize: 10,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  catOrderList: {
+    padding: 6,
+    gap: 4,
+  },
+  catOrderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+  },
+  catOrderRowSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primaryLight,
+  },
+  catOrderSelectArea: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  catOrderPosBadge: {
+    width: 26,
+    height: 22,
+    borderRadius: 6,
+    backgroundColor: COLORS.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catOrderPosBadgeSelected: {
+    backgroundColor: COLORS.primaryDark,
+  },
+  catOrderPosText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.textSecondary,
+  },
+  catOrderPosTextSelected: {
+    color: COLORS.textWhite,
+  },
+  catOrderName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  catOrderNameSelected: {
+    color: COLORS.primaryDark,
+    fontWeight: '800',
+  },
+  catOrderActiveTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  catOrderActiveTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: COLORS.primaryDark,
+  },
+  catOrderItemCount: {
+    fontSize: 10,
+    color: COLORS.textLight,
+    marginTop: 1,
+  },
+  catOrderBtnGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  catArrowBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 6,
+    backgroundColor: COLORS.surfaceAlt,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catArrowBtnDisabled: {
+    opacity: 0.35,
+    backgroundColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
   },
   row: {
     flexDirection: 'row',

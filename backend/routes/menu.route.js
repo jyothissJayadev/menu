@@ -78,6 +78,38 @@ router.post("/categories", async (req, res) => {
 });
 
 /**
+ * PATCH /api/companies/:companyId/menu/categories/reorder
+ * Reorder categories by updating their sequential positions
+ */
+router.patch("/categories/reorder", async (req, res) => {
+  try {
+    const companyId = req.params.companyId || req.companyId;
+    const { orderedIds } = req.body;
+
+    if (!Array.isArray(orderedIds)) {
+      return res.status(400).json({ error: "orderedIds array is required" });
+    }
+
+    const updateOps = orderedIds.map((id, index) =>
+      Category.updateOne(
+        { _id: id, companyId },
+        { $set: { position: index + 1 } }
+      )
+    );
+    await Promise.all(updateOps);
+
+    const updatedCategories = await Category.find({ companyId })
+      .sort({ position: 1, createdAt: 1 })
+      .lean();
+
+    res.json({ success: true, categories: updatedCategories });
+  } catch (err) {
+    console.error("reorder categories err", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
  * DELETE /api/companies/:companyId/menu/categories/:categoryId
  */
 router.delete("/categories/:categoryId", async (req, res) => {

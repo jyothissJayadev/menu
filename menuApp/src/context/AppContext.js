@@ -360,6 +360,22 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  /**
+   * Reorder categories
+   */
+  const reorderCategories = async (newOrderedCategories) => {
+    const withPositions = newOrderedCategories.map((cat, idx) => ({
+      ...cat,
+      position: idx + 1,
+    }));
+    setCategories(withPositions);
+
+    if (company && company._id) {
+      const orderedIds = withPositions.map((c) => c._id);
+      await api.reorderCategories(company._id, orderedIds);
+    }
+  };
+
   // --- COMPUTED ANALYTICS ---
   const stats = useMemo(() => {
     const activeOrders = orders.filter((o) => o.status !== 'cancelled');
@@ -414,6 +430,7 @@ export const AppProvider = ({ children }) => {
     addItem,
     updateItem,
     deleteItem,
+    reorderCategories,
     toggleItemAvailability,
     stats,
   };
