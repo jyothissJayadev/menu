@@ -98,7 +98,8 @@ export const AppProvider = ({ children }) => {
 
   /**
    * Simulate a new incoming customer order from the Web Menu
-   * Strictly incremental order number (Order #1, #2, #3, #4...)
+   * Uses continuous, sequential incrementing order numbers (does NOT reset daily,
+   * avoiding collisions for advance pre-orders placed a day or a week ahead).
    */
   const simulateIncomingOrder = () => {
     const randomItemsPool = [
@@ -138,18 +139,18 @@ export const AppProvider = ({ children }) => {
     const names = ['Kavita Rao', 'Siddharth Sen', 'Divya Menon', 'Rahul Kapoor', 'Tanya Bansal'];
     const selectedName = names[Math.floor(Math.random() * names.length)];
 
-    // Strictly incremental order sequence
-    const maxDailyNo = orders.reduce((max, o) => Math.max(max, o.dailyOrderNo || 0), 0);
-    const nextDailyNo = maxDailyNo + 1;
-    const todayIso = new Date().toISOString().slice(0, 10);
-    const todayKey = todayIso.replace(/-/g, '');
-    const uniqueOrderNo = `ORD-${todayKey}-${nextDailyNo}`;
+    // Continuous sequential order number
+    const maxOrderNum = orders.reduce(
+      (max, o) => Math.max(max, o.orderNumber || 100),
+      100
+    );
+    const nextOrderNumber = maxOrderNum + 1;
+    const uniqueOrderNo = `ORD-${nextOrderNumber}`;
 
     const newOrder = {
       _id: `ord-${Date.now()}`,
-      dailyOrderNo: nextDailyNo, // Strictly incremental order number
-      orderDate: todayIso,
-      orderNo: uniqueOrderNo,   // Unique date + incremental sequence
+      orderNumber: nextOrderNumber, // Continuous sequential counter
+      orderNo: uniqueOrderNo,
       customerName: selectedName,
       phone: `+91 9${Math.floor(100000000 + Math.random() * 900000000)}`,
       table: Math.random() > 0.5 ? `Table ${Math.floor(Math.random() * 6) + 1}` : 'Takeaway',
@@ -160,7 +161,6 @@ export const AppProvider = ({ children }) => {
       items: randomPick.map((it) => ({
         ...it,
         orderIdRef: uniqueOrderNo,
-        orderDate: todayIso,
       })),
     };
 

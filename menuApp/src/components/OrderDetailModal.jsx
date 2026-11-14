@@ -88,15 +88,15 @@ export const OrderDetailModal = ({ order, visible, onClose }) => {
           <View style={styles.header}>
             <View>
               <View style={styles.orderIdentRow}>
-                <View style={styles.dailyBadge}>
-                  <Text style={styles.dailyBadgeText}>
-                    Order #{order.dailyOrderNo || '1'}
+                <View style={styles.orderBadge}>
+                  <Text style={styles.orderBadgeText}>
+                    Order #{order.orderNumber || order.orderNo?.replace('ORD-', '') || '101'}
                   </Text>
                 </View>
                 <Text style={styles.orderNumber}>{order.orderNo}</Text>
               </View>
               <Text style={styles.orderTime}>
-                Ordered at {formattedDate} • {order.orderDate || new Date(order.startTime).toLocaleDateString()}
+                Ordered at {formattedDate} • {new Date(order.startTime).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
               </Text>
             </View>
             <View style={styles.headerRight}>
@@ -306,13 +306,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  dailyBadge: {
+  orderBadge: {
     backgroundColor: COLORS.primary,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
   },
-  dailyBadgeText: {
+  orderBadgeText: {
     fontSize: 11,
     fontWeight: '800',
     color: COLORS.textWhite,

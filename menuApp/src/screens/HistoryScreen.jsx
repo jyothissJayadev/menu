@@ -242,7 +242,7 @@ export const HistoryScreen = () => {
                   <View>
                     <View style={styles.orderIdentRow}>
                       <View style={styles.dailyBadge}>
-                        <Text style={styles.dailyBadgeText}>Order #{item.dailyOrderNo || '1'}</Text>
+                        <Text style={styles.dailyBadgeText}>Order #{item.orderNumber || item.orderNo?.replace('ORD-', '') || '101'}</Text>
                       </View>
                       <Text style={styles.orderNo}>{item.orderNo}</Text>
                     </View>

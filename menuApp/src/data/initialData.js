@@ -95,22 +95,18 @@ export const INITIAL_ITEMS = [
   },
 ];
 
-const todayDateStr = new Date().toISOString().slice(0, 10);
-const yesterdayDateObj = new Date(Date.now() - 24 * 3600 * 1000);
-const yesterdayDateStr = yesterdayDateObj.toISOString().slice(0, 10);
-
+// Continuous sequential order numbering (persistent across days/pre-orders)
 export const INITIAL_ORDERS = [
   {
-    _id: 'ord-001',
-    dailyOrderNo: 1, // Today's Order #1
-    orderDate: todayDateStr,
-    orderNo: `ORD-${todayDateStr.replace(/-/g, '')}-1`,
+    _id: 'ord-101',
+    orderNumber: 101, // Continuous sequence
+    orderNo: 'ORD-101',
     customerName: 'Aarav Sharma',
     phone: '+91 98765 43210',
     table: 'Table 4',
     status: 'pending',
     total: 910,
-    startTime: new Date(Date.now() - 6 * 60 * 1000).toISOString(),
+    startTime: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
     notes: 'Please write "Happy 21st Birthday Sneha" in golden frosting on the cake.',
     items: [
       {
@@ -130,17 +126,16 @@ export const INITIAL_ORDERS = [
     ],
   },
   {
-    _id: 'ord-002',
-    dailyOrderNo: 2, // Today's Order #2
-    orderDate: todayDateStr,
-    orderNo: `ORD-${todayDateStr.replace(/-/g, '')}-2`,
+    _id: 'ord-102',
+    orderNumber: 102,
+    orderNo: 'ORD-102',
     customerName: 'Priya Nambiar',
     phone: '+91 94471 22890',
     table: 'Takeaway',
     status: 'cooking',
     total: 550,
-    startTime: new Date(Date.now() - 18 * 60 * 1000).toISOString(),
-    notes: 'Pack safely for car travel. Include wooden cutlery.',
+    startTime: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
+    notes: 'Pre-ordered yesterday for today 7 PM car pickup. Include wooden cutlery.',
     items: [
       {
         itemId: 'item-102',
@@ -152,16 +147,15 @@ export const INITIAL_ORDERS = [
     ],
   },
   {
-    _id: 'ord-003',
-    dailyOrderNo: 3, // Today's Order #3
-    orderDate: todayDateStr,
-    orderNo: `ORD-${todayDateStr.replace(/-/g, '')}-3`,
+    _id: 'ord-103',
+    orderNumber: 103,
+    orderNo: 'ORD-103',
     customerName: 'Rohan Verma',
     phone: '+91 98200 11234',
     table: 'Table 2',
     status: 'cooking',
     total: 490,
-    startTime: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
+    startTime: new Date(Date.now() - 50 * 60 * 1000).toISOString(),
     notes: 'Extra cold latte with less ice please.',
     items: [
       {
@@ -181,17 +175,16 @@ export const INITIAL_ORDERS = [
     ],
   },
   {
-    _id: 'ord-004',
-    dailyOrderNo: 4, // Today's Order #4
-    orderDate: todayDateStr,
-    orderNo: `ORD-${todayDateStr.replace(/-/g, '')}-4`,
+    _id: 'ord-104',
+    orderNumber: 104,
+    orderNo: 'ORD-104',
     customerName: 'Ananya Iyer',
     phone: '+91 99887 66554',
     table: 'Delivery #41',
     status: 'completed',
     total: 670,
-    startTime: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
-    endTime: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+    startTime: new Date(Date.now() - 90 * 60 * 1000).toISOString(),
+    endTime: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
     durationMinutes: 35,
     notes: 'Delivery driver arriving in 5 mins.',
     items: [
@@ -219,17 +212,16 @@ export const INITIAL_ORDERS = [
     ],
   },
   {
-    _id: 'ord-005',
-    dailyOrderNo: 1, // Yesterday's Order #1
-    orderDate: yesterdayDateStr,
-    orderNo: `ORD-${yesterdayDateStr.replace(/-/g, '')}-1`,
+    _id: 'ord-105',
+    orderNumber: 105,
+    orderNo: 'ORD-105',
     customerName: 'Vikram Joshi',
     phone: '+91 98711 55443',
     table: 'Table 1',
     status: 'delivered',
     total: 300,
-    startTime: new Date(Date.now() - 25 * 3600 * 1000).toISOString(),
-    endTime: new Date(Date.now() - 24.5 * 3600 * 1000).toISOString(),
+    startTime: new Date(Date.now() - 26 * 3600 * 1000).toISOString(), // Yesterday
+    endTime: new Date(Date.now() - 25.5 * 3600 * 1000).toISOString(),
     durationMinutes: 30,
     notes: 'Payment collected by UPI.',
     items: [
@@ -250,19 +242,18 @@ export const INITIAL_ORDERS = [
     ],
   },
   {
-    _id: 'ord-006',
-    dailyOrderNo: 2, // Yesterday's Order #2
-    orderDate: yesterdayDateStr,
-    orderNo: `ORD-${yesterdayDateStr.replace(/-/g, '')}-2`,
+    _id: 'ord-106',
+    orderNumber: 106,
+    orderNo: 'ORD-106',
     customerName: 'Meera Nair',
     phone: '+91 97455 12345',
     table: 'Takeaway',
     status: 'delivered',
     total: 750,
-    startTime: new Date(Date.now() - 28 * 3600 * 1000).toISOString(),
-    endTime: new Date(Date.now() - 27.5 * 3600 * 1000).toISOString(),
+    startTime: new Date(Date.now() - 29 * 3600 * 1000).toISOString(), // Yesterday
+    endTime: new Date(Date.now() - 28.5 * 3600 * 1000).toISOString(),
     durationMinutes: 25,
-    notes: 'Pre-ordered for pickup.',
+    notes: 'Pre-ordered 3 days ago for pickup.',
     items: [
       {
         itemId: 'item-101',

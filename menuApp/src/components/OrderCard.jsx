@@ -32,13 +32,12 @@ export const OrderCard = ({ order, onPress }) => {
       {/* Top Header */}
       <View style={styles.cardHeader}>
         <View style={styles.orderIdent}>
-          {/* Prominent Incremental Day-Based Order Badge */}
-          <View style={styles.dailyBadge}>
-            <Text style={styles.dailyBadgeText}>
-              Order #{order.dailyOrderNo || '1'}
+          {/* Prominent Continuous Sequential Order Badge */}
+          <View style={styles.orderBadge}>
+            <Text style={styles.orderBadgeText}>
+              Order #{order.orderNumber || order.orderNo?.replace('ORD-', '') || '101'}
             </Text>
           </View>
-          {/* Unique order code */}
           <Text style={styles.orderNo}>{order.orderNo}</Text>
         </View>
 
@@ -188,13 +187,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  dailyBadge: {
+  orderBadge: {
     backgroundColor: COLORS.primary,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
   },
-  dailyBadgeText: {
+  orderBadgeText: {
     fontSize: 12,
     fontWeight: '800',
     color: COLORS.textWhite,
