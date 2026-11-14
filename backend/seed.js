@@ -1,4 +1,5 @@
 // backend/seed.js
+import "dotenv/config";
 import mongoose from "mongoose";
 import Company from "./models/Company.schema.js";
 import Category from "./models/Category.schema.js";
@@ -25,7 +26,7 @@ async function seed() {
 
   // 1. Create Cake Shop Company
   const company = await Company.create({
-    name: "Sweet Delights Cake Studio",
+    name: "Lavino Cake Studio",
     location: "Main Street, Baker District",
     logo: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=200&auto=format&fit=crop&q=60",
     settings: {

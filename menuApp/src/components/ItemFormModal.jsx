@@ -19,7 +19,7 @@ import { COLORS, SHADOWS } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 
 export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
-  const { categories, items, addItem, updateItem, reorderCategories } = useApp();
+  const { categories, addItem, updateItem } = useApp();
 
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -63,22 +63,10 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
     setAssignedNewCategoryName(null);
   }, [initialItem, visible, categories]);
 
-  // Sort categories by sequential position
+  // Sort categories by sequential position for dropdown display
   const sortedCategories = React.useMemo(() => {
     return [...categories].sort((a, b) => (a.position || 0) - (b.position || 0));
   }, [categories]);
-
-  // Reorder categories up or down
-  const handleMoveCategory = (index, delta) => {
-    const newIndex = index + delta;
-    if (newIndex < 0 || newIndex >= sortedCategories.length) return;
-
-    const reordered = [...sortedCategories];
-    const [moved] = reordered.splice(index, 1);
-    reordered.splice(newIndex, 0, moved);
-
-    reorderCategories(reordered);
-  };
 
   // Handle image picking from phone storage
   const handlePickFromGallery = async () => {
@@ -247,7 +235,7 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
             {isDropdownOpen && (
               <View style={styles.dropdownMenu}>
                 <ScrollView nestedScrollEnabled style={{ maxHeight: 180 }}>
-                  {sortedCategories.map((cat, idx) => {
+                  {sortedCategories.map((cat) => {
                     const isSelected = !assignedNewCategoryName && categoryId === cat._id;
                     return (
                       <TouchableOpacity
@@ -262,17 +250,14 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
                           setIsDropdownOpen(false);
                         }}
                       >
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                          <Text style={styles.dropdownItemPos}>#{idx + 1}</Text>
-                          <Text
-                            style={[
-                              styles.dropdownItemText,
-                              isSelected && styles.dropdownItemTextActive,
-                            ]}
-                          >
-                            {cat.name}
-                          </Text>
-                        </View>
+                        <Text
+                          style={[
+                            styles.dropdownItemText,
+                            isSelected && styles.dropdownItemTextActive,
+                          ]}
+                        >
+                          {cat.name}
+                        </Text>
                         {isSelected && (
                           <Ionicons name="checkmark" size={16} color={COLORS.primary} />
                         )}
@@ -321,114 +306,6 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
                 )}
               </View>
             )}
-
-            {/* Category Display Order & Reordering Section */}
-            <View style={styles.catOrderCard}>
-              <View style={styles.catOrderCardHeader}>
-                <View style={styles.catOrderTitleRow}>
-                  <Ionicons name="swap-vertical" size={15} color={COLORS.primaryDark} />
-                  <Text style={styles.catOrderCardTitle}>Category Display Order</Text>
-                </View>
-                <Text style={styles.catOrderCardSubtitle}>
-                  Order determines appearance in All section & web menu. Use ▲ and ▼ to reorder.
-                </Text>
-              </View>
-
-              <View style={styles.catOrderList}>
-                {sortedCategories.map((cat, idx) => {
-                  const isSelected = !assignedNewCategoryName && categoryId === cat._id;
-                  const count = items ? items.filter((i) => i.categoryId === cat._id).length : 0;
-                  const isFirst = idx === 0;
-                  const isLast = idx === sortedCategories.length - 1;
-
-                  return (
-                    <View
-                      key={cat._id}
-                      style={[
-                        styles.catOrderRow,
-                        isSelected && styles.catOrderRowSelected,
-                      ]}
-                    >
-                      <TouchableOpacity
-                        style={styles.catOrderSelectArea}
-                        activeOpacity={0.7}
-                        onPress={() => {
-                          setCategoryId(cat._id);
-                          setAssignedNewCategoryName(null);
-                          setIsDropdownOpen(false);
-                        }}
-                      >
-                        <View
-                          style={[
-                            styles.catOrderPosBadge,
-                            isSelected && styles.catOrderPosBadgeSelected,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.catOrderPosText,
-                              isSelected && styles.catOrderPosTextSelected,
-                            ]}
-                          >
-                            #{idx + 1}
-                          </Text>
-                        </View>
-
-                        <View style={{ flex: 1 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Text
-                              style={[
-                                styles.catOrderName,
-                                isSelected && styles.catOrderNameSelected,
-                              ]}
-                            >
-                              {cat.name}
-                            </Text>
-                            {isSelected && (
-                              <View style={styles.catOrderActiveTag}>
-                                <Ionicons name="checkmark" size={11} color={COLORS.primary} />
-                                <Text style={styles.catOrderActiveTagText}>Selected</Text>
-                              </View>
-                            )}
-                          </View>
-                          <Text style={styles.catOrderItemCount}>
-                            {count} {count === 1 ? 'cake' : 'cakes'}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-
-                      <View style={styles.catOrderBtnGroup}>
-                        <TouchableOpacity
-                          style={[styles.catArrowBtn, isFirst && styles.catArrowBtnDisabled]}
-                          disabled={isFirst}
-                          onPress={() => handleMoveCategory(idx, -1)}
-                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                        >
-                          <Ionicons
-                            name="chevron-up"
-                            size={16}
-                            color={isFirst ? COLORS.border : COLORS.primaryDark}
-                          />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={[styles.catArrowBtn, isLast && styles.catArrowBtnDisabled]}
-                          disabled={isLast}
-                          onPress={() => handleMoveCategory(idx, 1)}
-                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                        >
-                          <Ionicons
-                            name="chevron-down"
-                            size={16}
-                            color={isLast ? COLORS.border : COLORS.primaryDark}
-                          />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
 
             {/* Price & Offer Row */}
             <View style={styles.row}>

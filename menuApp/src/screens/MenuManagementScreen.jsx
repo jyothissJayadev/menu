@@ -213,54 +213,12 @@ export const MenuManagementScreen = () => {
                 <Text style={styles.sectionPosText}>#{section.categoryIndex + 1}</Text>
               </View>
               <Text style={styles.sectionHeaderTitle}>{section.title}</Text>
-              <View style={styles.sectionCountPill}>
-                <Text style={styles.sectionCountPillText}>
-                  {section.data.length} {section.data.length === 1 ? 'cake' : 'cakes'}
-                </Text>
-              </View>
             </View>
-
-            {/* Quick Category Reordering Controls in All View */}
-            {selectedCat === 'all' && (
-              <View style={styles.sectionReorderArrows}>
-                <TouchableOpacity
-                  style={[
-                    styles.sectionArrowBtn,
-                    section.categoryIndex === 0 && styles.sectionArrowBtnDisabled,
-                  ]}
-                  disabled={section.categoryIndex === 0}
-                  onPress={() => handleMoveCategory(section.categoryIndex, -1)}
-                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                >
-                  <Ionicons
-                    name="chevron-up"
-                    size={16}
-                    color={section.categoryIndex === 0 ? COLORS.border : COLORS.primaryDark}
-                  />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.sectionArrowBtn,
-                    section.categoryIndex === sortedCategories.length - 1 &&
-                      styles.sectionArrowBtnDisabled,
-                  ]}
-                  disabled={section.categoryIndex === sortedCategories.length - 1}
-                  onPress={() => handleMoveCategory(section.categoryIndex, 1)}
-                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                >
-                  <Ionicons
-                    name="chevron-down"
-                    size={16}
-                    color={
-                      section.categoryIndex === sortedCategories.length - 1
-                        ? COLORS.border
-                        : COLORS.primaryDark
-                    }
-                  />
-                </TouchableOpacity>
-              </View>
-            )}
+            <View style={styles.sectionCountPill}>
+              <Text style={styles.sectionCountPillText}>
+                {section.data.length} {section.data.length === 1 ? 'cake' : 'cakes'}
+              </Text>
+            </View>
           </View>
         )}
         renderItem={({ item }) => (
@@ -629,25 +587,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: COLORS.textSecondary,
-  },
-  sectionReorderArrows: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  sectionArrowBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sectionArrowBtnDisabled: {
-    opacity: 0.35,
-    borderColor: '#E5E7EB',
   },
   sectionSpacer: {
     height: 8,
