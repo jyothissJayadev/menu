@@ -4,19 +4,9 @@ import {
   ShoppingBag,
   X,
   ChevronRight,
-  ChevronDown,
-  ChevronUp,
   Minus,
   Plus,
-  Star,
-  BookOpen,
-  CheckCircle2,
-  UtensilsCrossed,
-  Trash2,
   ArrowLeft,
-  Tag,
-  TicketPercent,
-  Clock,
   Sparkles,
 } from "lucide-react";
 import { fetchCompany, fetchMenu, createOrder } from "./api";
@@ -25,7 +15,7 @@ import { OrderTrackingModal } from "./OrderTrackingModal";
 // --- FALLBACK MOCK DATA IF BACKEND UNREACHABLE ---
 const DEFAULT_RESTAURANT = {
   id: "cake-studio",
-  name: "Sweet Delights Cake Studio",
+  name: "Lavino Cake Studio",
   rating: 4.9,
   ratingCount: "2.4K+",
   time: "20-30 mins",
@@ -122,41 +112,6 @@ const DEFAULT_ITEMS = [
 
 // --- UI COMPONENTS ---
 
-const Button = ({
-  children,
-  variant = "primary",
-  size = "md",
-  className = "",
-  disabled = false,
-  ...props
-}) => {
-  const baseStyle =
-    "font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 disabled:pointer-events-none";
-
-  const variants = {
-    primary: "bg-amber-600 hover:bg-amber-700 text-white shadow-md shadow-amber-600/20",
-    outline: "border-2 border-amber-600 text-amber-600 hover:bg-amber-50",
-    secondary: "bg-amber-50 text-amber-800 hover:bg-amber-100",
-    danger: "bg-red-50 text-red-600 hover:bg-red-100",
-  };
-
-  const sizes = {
-    sm: "px-3 py-1.5 text-xs",
-    md: "px-4 py-2.5 text-sm",
-    lg: "px-6 py-3.5 text-base w-full",
-  };
-
-  return (
-    <button
-      className={`${baseStyle} ${variants[variant]} ${sizes[size]} ${className}`}
-      disabled={disabled}
-      {...props}
-    >
-      {children}
-    </button>
-  );
-};
-
 const MenuItem = ({ item, onAdd, cart = [], updateQuantity }) => {
   const cartItem = cart.find((c) => c.id === item.id);
 
@@ -165,7 +120,10 @@ const MenuItem = ({ item, onAdd, cart = [], updateQuantity }) => {
       {/* Thumbnail */}
       <div className="w-24 h-24 rounded-xl overflow-hidden bg-gray-100 shrink-0 relative">
         <img
-          src={item.image || "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500&auto=format&fit=crop&q=60"}
+          src={
+            item.image ||
+            "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500&auto=format&fit=crop&q=60"
+          }
           alt={item.name}
           className="w-full h-full object-cover"
         />
@@ -227,7 +185,7 @@ const MenuItem = ({ item, onAdd, cart = [], updateQuantity }) => {
   );
 };
 
-// --- CART DRAWER ---
+// --- 2-STEP CART & CHECKOUT DRAWER ---
 
 const CartDrawer = ({
   cart,
@@ -238,12 +196,30 @@ const CartDrawer = ({
   onPlaceOrder,
   isPlacing,
 }) => {
+  // Step 1 = Cart Items Review, Step 2 = Customer Details (Name & Phone)
+  const [step, setStep] = useState(1);
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [table, setTable] = useState("Table 1");
   const [notes, setNotes] = useState("");
 
+  // Reset to step 1 whenever drawer is opened
+  useEffect(() => {
+    if (isOpen) {
+      setStep(1);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const handleProceedToDetails = () => {
+    if (cart.length === 0) return;
+    setStep(2);
+  };
+
+  const handleBackToCart = () => {
+    setStep(1);
+  };
 
   const handleSubmitOrder = (e) => {
     e.preventDefault();
@@ -263,34 +239,56 @@ const CartDrawer = ({
     });
   };
 
+  const totalItemsCount = cart.reduce((s, i) => s + i.quantity, 0);
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end">
       <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
         {/* Header */}
         <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-amber-50/60">
           <div className="flex items-center gap-2">
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-full hover:bg-amber-100 flex items-center justify-center transition-colors"
-            >
-              <ChevronRight className="w-5 h-5 text-gray-700" />
-            </button>
-            <h2 className="font-extrabold text-lg text-gray-900">Your Cake Cart</h2>
+            {step === 2 ? (
+              <button
+                onClick={handleBackToCart}
+                className="w-8 h-8 rounded-full hover:bg-amber-100 flex items-center justify-center transition-colors text-gray-700"
+                title="Back to cart items"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            ) : (
+              <button
+                onClick={onClose}
+                className="w-8 h-8 rounded-full hover:bg-amber-100 flex items-center justify-center transition-colors text-gray-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+            <div>
+              <h2 className="font-extrabold text-lg text-gray-900 leading-tight">
+                {step === 1 ? "Your Cake Cart" : "Customer Details"}
+              </h2>
+              {step === 2 && (
+                <p className="text-[11px] text-amber-800 font-medium">
+                  Step 2 of 2 • Contact & Delivery
+                </p>
+              )}
+            </div>
           </div>
           <span className="text-xs font-bold bg-amber-200 text-amber-900 px-2.5 py-1 rounded-full">
-            {cart.reduce((s, i) => s + i.quantity, 0)} items
+            {totalItemsCount} {totalItemsCount === 1 ? "item" : "items"}
           </span>
         </div>
 
         {/* Scrollable Form & Items */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-5">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {cart.length === 0 ? (
             <div className="h-64 flex flex-col items-center justify-center text-gray-400">
               <ShoppingBag className="w-12 h-12 mb-3 opacity-30 text-amber-600" />
               <p className="font-semibold text-gray-600">Your cart is empty</p>
               <p className="text-xs text-gray-400 mt-1">Pick some delicious cakes & pastries!</p>
             </div>
-          ) : (
+          ) : step === 1 ? (
+            /* STEP 1: CART ITEMS REVIEW */
             <>
               {/* Order Items List */}
               <div className="space-y-3">
@@ -326,15 +324,49 @@ const CartDrawer = ({
                 ))}
               </div>
 
-              {/* Customer Checkout Details */}
+              {/* Bill Summary */}
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-1.5">
+                <div className="flex justify-between text-xs text-gray-600">
+                  <span>Subtotal</span>
+                  <span className="font-semibold">₹{total}</span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-600">
+                  <span>Bakery Packaging</span>
+                  <span className="font-semibold text-emerald-600">FREE</span>
+                </div>
+                <div className="border-t border-dashed border-gray-200 pt-2 flex justify-between text-base font-black text-gray-900">
+                  <span>Total Amount</span>
+                  <span className="text-amber-700">₹{total}</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            /* STEP 2: CUSTOMER DETAILS (NAME & PHONE NUMBER) */
+            <>
+              {/* Order Quick Summary Banner */}
+              <div className="bg-amber-100/60 border border-amber-200/80 rounded-2xl p-3 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-amber-900">
+                    Order for {totalItemsCount} {totalItemsCount === 1 ? "item" : "items"}
+                  </p>
+                  <p className="text-[11px] text-amber-700 line-clamp-1">
+                    {cart.map((c) => `${c.quantity}x ${c.name}`).join(", ")}
+                  </p>
+                </div>
+                <span className="text-base font-black text-amber-900">₹{total}</span>
+              </div>
+
+              {/* Form Inputs */}
               <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200/70 space-y-3">
                 <h3 className="text-xs font-extrabold text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Customer & Table Details</span>
+                  <span>Enter Customer & Delivery Info</span>
                 </h3>
 
                 <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Your Name *</label>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">
+                    Your Name *
+                  </label>
                   <input
                     type="text"
                     required
@@ -342,11 +374,14 @@ const CartDrawer = ({
                     className="w-full text-sm bg-white border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
+                    autoFocus
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Mobile Phone *</label>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">
+                    Mobile Phone Number *
+                  </label>
                   <input
                     type="tel"
                     required
@@ -359,7 +394,9 @@ const CartDrawer = ({
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs font-bold text-gray-700 block mb-1">Dining / Pickup</label>
+                    <label className="text-xs font-bold text-gray-700 block mb-1">
+                      Dining / Pickup
+                    </label>
                     <select
                       value={table}
                       onChange={(e) => setTable(e.target.value)}
@@ -377,7 +414,7 @@ const CartDrawer = ({
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-gray-700 block mb-1">Time</label>
+                    <label className="text-xs font-bold text-gray-700 block mb-1">Estimated Time</label>
                     <div className="w-full text-xs bg-gray-100 border border-gray-200 rounded-xl px-3 py-2 text-gray-600 font-medium">
                       ASAP (~20m)
                     </div>
@@ -397,22 +434,6 @@ const CartDrawer = ({
                   />
                 </div>
               </div>
-
-              {/* Bill Summary */}
-              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-1.5">
-                <div className="flex justify-between text-xs text-gray-600">
-                  <span>Subtotal</span>
-                  <span className="font-semibold">₹{total}</span>
-                </div>
-                <div className="flex justify-between text-xs text-gray-600">
-                  <span>Bakery Packaging</span>
-                  <span className="font-semibold text-emerald-600">FREE</span>
-                </div>
-                <div className="border-t border-dashed border-gray-200 pt-2 flex justify-between text-base font-black text-gray-900">
-                  <span>Total Amount</span>
-                  <span className="text-amber-700">₹{total}</span>
-                </div>
-              </div>
             </>
           )}
         </div>
@@ -420,16 +441,27 @@ const CartDrawer = ({
         {/* Footer Checkout Button */}
         {cart.length > 0 && (
           <div className="p-4 border-t border-gray-100 bg-white shadow-lg">
-            <button
-              onClick={handleSubmitOrder}
-              disabled={isPlacing}
-              className="w-full py-3.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-extrabold rounded-xl text-base shadow-md transition-all active:scale-95 flex items-center justify-between px-4"
-            >
-              <span>Place Order • ₹{total}</span>
-              <span className="text-xs font-semibold bg-white/20 px-2 py-0.5 rounded">
-                {isPlacing ? "Sending to Kitchen..." : "Confirm & Send 🍰"}
-              </span>
-            </button>
+            {step === 1 ? (
+              <button
+                onClick={handleProceedToDetails}
+                className="w-full py-3.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold rounded-xl text-base shadow-md transition-all active:scale-95 flex items-center justify-between px-5"
+              >
+                <span>Place Order • ₹{total}</span>
+                <span className="text-xs font-bold bg-white/20 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                  Next: Enter Details <ChevronRight className="w-4 h-4" />
+                </span>
+              </button>
+            ) : (
+              <button
+                onClick={handleSubmitOrder}
+                disabled={isPlacing}
+                className="w-full py-3.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-extrabold rounded-xl text-base shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 px-4"
+              >
+                <span>
+                  {isPlacing ? "Sending to Kitchen..." : `Confirm & Place Order • ₹${total} 🍰`}
+                </span>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -526,7 +558,7 @@ export default function App() {
   const handlePlaceOrder = async (customerDetails) => {
     setIsPlacing(true);
     try {
-      const companyId = company ? company._id : "6af87f1f5dd19a518f35d6bb";
+      const companyId = company ? company._id : "6af8890bb0d5cb3fd1c686bc";
 
       const orderPayload = {
         name: customerDetails.name,
@@ -556,19 +588,35 @@ export default function App() {
     }
   };
 
-  const filteredItems = useMemo(() => {
-    return menuItems.filter((item) => {
-      if (selectedCat !== "all" && item.categoryId !== selectedCat) return false;
-      if (searchTerm.trim()) {
-        const q = searchTerm.toLowerCase();
-        return (
-          item.name.toLowerCase().includes(q) ||
-          (item.description && item.description.toLowerCase().includes(q))
-        );
-      }
-      return true;
-    });
-  }, [menuItems, selectedCat, searchTerm]);
+  // Group items section-wise by category in the exact sequence of categories
+  const categorySections = useMemo(() => {
+    const activeCats =
+      selectedCat === "all"
+        ? categories
+        : categories.filter((c) => c.id === selectedCat);
+
+    return activeCats
+      .map((cat, idx) => {
+        const catItems = menuItems.filter((item) => {
+          if (item.categoryId !== cat.id) return false;
+          if (searchTerm.trim()) {
+            const q = searchTerm.toLowerCase();
+            return (
+              item.name.toLowerCase().includes(q) ||
+              (item.description && item.description.toLowerCase().includes(q))
+            );
+          }
+          return true;
+        });
+
+        return {
+          category: cat,
+          categoryIndex: idx,
+          items: catItems,
+        };
+      })
+      .filter((sec) => sec.items.length > 0);
+  }, [categories, menuItems, selectedCat, searchTerm]);
 
   return (
     <div className="min-h-screen bg-amber-50/30 text-gray-900 pb-24">
@@ -619,7 +667,7 @@ export default function App() {
         </div>
 
         {/* Category Horizontal Filter Pills */}
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
           <button
             onClick={() => setSelectedCat("all")}
             className={`px-4 py-1.5 rounded-full text-xs font-bold shrink-0 transition-all ${
@@ -630,36 +678,75 @@ export default function App() {
           >
             All Items ({menuItems.length})
           </button>
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCat(cat.id)}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold shrink-0 transition-all ${
-                selectedCat === cat.id
-                  ? "bg-amber-600 text-white shadow"
-                  : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-              }`}
-            >
-              {cat.name}
-            </button>
-          ))}
+          {categories.map((cat, idx) => {
+            const count = menuItems.filter((i) => i.categoryId === cat.id).length;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCat(cat.id)}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold shrink-0 transition-all ${
+                  selectedCat === cat.id
+                    ? "bg-amber-600 text-white shadow"
+                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                }`}
+              >
+                #{idx + 1} {cat.name} ({count})
+              </button>
+            );
+          })}
         </div>
 
-        {/* Menu Items Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredItems.map((item) => (
-            <MenuItem
-              key={item.id}
-              item={item}
-              onAdd={addToCart}
-              cart={cart}
-              updateQuantity={updateQuantity}
-            />
-          ))}
-        </div>
+        {/* Section-Wise Menu Items by Category */}
+        {categorySections.length === 0 ? (
+          <div className="bg-white rounded-3xl p-12 text-center border border-amber-100 shadow-sm my-6">
+            <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-3 text-2xl">
+              🎂
+            </div>
+            <h3 className="font-extrabold text-base text-gray-900">No Bakes Found</h3>
+            <p className="text-xs text-gray-400 mt-1">
+              {searchTerm
+                ? `No items matched "${searchTerm}". Try another search term.`
+                : "No items available in this category."}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {categorySections.map((sec) => (
+              <section key={sec.category.id} className="space-y-4">
+                {/* Category Section Header */}
+                <div className="flex items-center justify-between border-b-2 border-amber-200/70 pb-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-6 h-6 rounded-lg bg-amber-600 text-white font-extrabold text-xs flex items-center justify-center shadow-sm">
+                      #{sec.categoryIndex + 1}
+                    </span>
+                    <h2 className="font-black text-xl text-gray-900 tracking-tight">
+                      {sec.category.name}
+                    </h2>
+                  </div>
+                  <span className="text-xs font-bold text-amber-800 bg-amber-100/80 px-3 py-1 rounded-full">
+                    {sec.items.length} {sec.items.length === 1 ? "cake" : "cakes"}
+                  </span>
+                </div>
+
+                {/* Section Items Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {sec.items.map((item) => (
+                    <MenuItem
+                      key={item.id}
+                      item={item}
+                      onAdd={addToCart}
+                      cart={cart}
+                      updateQuantity={updateQuantity}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
       </main>
 
-      {/* Cart Drawer */}
+      {/* 2-Step Cart Drawer */}
       <CartDrawer
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
@@ -675,7 +762,7 @@ export default function App() {
         order={activeTrackedOrder}
         isOpen={isTrackingOpen}
         onClose={() => setIsTrackingOpen(false)}
-        companyId={company ? company._id : "6af87f1f5dd19a518f35d6bb"}
+        companyId={company ? company._id : "6af8890bb0d5cb3fd1c686bc"}
       />
     </div>
   );
