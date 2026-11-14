@@ -5,7 +5,6 @@ export const INITIAL_CATEGORIES = [
   { _id: 'cat-2', name: 'Cheesecakes & Mousse', icon: 'ice-cream', position: 2 },
   { _id: 'cat-3', name: 'Pastries & Tarts', icon: 'pie-chart', position: 3 },
   { _id: 'cat-4', name: 'Cupcakes & Brownies', icon: 'gift', position: 4 },
-  { _id: 'cat-5', name: 'Artisan Breads', icon: 'restaurant', position: 5 },
   { _id: 'cat-6', name: 'Beverages & Shakes', icon: 'cafe', position: 6 },
 ];
 
@@ -18,7 +17,6 @@ export const INITIAL_ITEMS = [
     price: 850,
     offer: true,
     offerPrice: 750,
-    veg: true,
     available: true,
     image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500&auto=format&fit=crop&q=60',
     timing: [],
@@ -31,7 +29,6 @@ export const INITIAL_ITEMS = [
     price: 550,
     offer: false,
     offerPrice: null,
-    veg: false,
     available: true,
     image: 'https://images.unsplash.com/photo-1616541823729-00fe0aacd32c?w=500&auto=format&fit=crop&q=60',
     timing: [],
@@ -44,7 +41,6 @@ export const INITIAL_ITEMS = [
     price: 320,
     offer: true,
     offerPrice: 280,
-    veg: true,
     available: true,
     image: 'https://images.unsplash.com/photo-1533134242443-d4fd215305ad?w=500&auto=format&fit=crop&q=60',
     timing: [],
@@ -57,7 +53,6 @@ export const INITIAL_ITEMS = [
     price: 340,
     offer: false,
     offerPrice: null,
-    veg: true,
     available: false, // Out of stock example
     image: 'https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?w=500&auto=format&fit=crop&q=60',
     timing: [],
@@ -70,7 +65,6 @@ export const INITIAL_ITEMS = [
     price: 140,
     offer: false,
     offerPrice: null,
-    veg: true,
     available: true,
     image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=500&auto=format&fit=crop&q=60',
     timing: [],
@@ -83,7 +77,6 @@ export const INITIAL_ITEMS = [
     price: 190,
     offer: true,
     offerPrice: 160,
-    veg: true,
     available: true,
     image: 'https://images.unsplash.com/photo-1576618148400-f54bed99fcfd?w=500&auto=format&fit=crop&q=60',
     timing: [],
@@ -96,7 +89,6 @@ export const INITIAL_ITEMS = [
     price: 210,
     offer: false,
     offerPrice: null,
-    veg: true,
     available: true,
     image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=500&auto=format&fit=crop&q=60',
     timing: [],
@@ -106,14 +98,16 @@ export const INITIAL_ITEMS = [
 export const INITIAL_ORDERS = [
   {
     _id: 'ord-001',
-    orderNo: 'ORD-20261114-001',
+    dailyOrderNo: 1, // Order #1 of the day
+    orderDate: '2026-11-14',
+    orderNo: 'ORD-20261114-#1', // Unique date + daily order ID
     customerName: 'Aarav Sharma',
     phone: '+91 98765 43210',
     table: 'Table 4',
     status: 'pending',
     total: 910,
     startTime: new Date(Date.now() - 6 * 60 * 1000).toISOString(),
-    notes: 'Please write "Happy 21st Birthday Sneha" in golden frosting on the cake. Eggless only.',
+    notes: 'Please write "Happy 21st Birthday Sneha" in golden frosting on the cake.',
     items: [
       {
         itemId: 'item-101',
@@ -133,7 +127,9 @@ export const INITIAL_ORDERS = [
   },
   {
     _id: 'ord-002',
-    orderNo: 'ORD-20261114-002',
+    dailyOrderNo: 2, // Order #2 of the day
+    orderDate: '2026-11-14',
+    orderNo: 'ORD-20261114-#2',
     customerName: 'Priya Nambiar',
     phone: '+91 94471 22890',
     table: 'Takeaway',
@@ -153,7 +149,9 @@ export const INITIAL_ORDERS = [
   },
   {
     _id: 'ord-003',
-    orderNo: 'ORD-20261114-003',
+    dailyOrderNo: 3, // Order #3 of the day
+    orderDate: '2026-11-14',
+    orderNo: 'ORD-20261114-#3',
     customerName: 'Rohan Verma',
     phone: '+91 98200 11234',
     table: 'Table 2',
@@ -180,7 +178,9 @@ export const INITIAL_ORDERS = [
   },
   {
     _id: 'ord-004',
-    orderNo: 'ORD-20261114-004',
+    dailyOrderNo: 4, // Order #4 of the day
+    orderDate: '2026-11-14',
+    orderNo: 'ORD-20261114-#4',
     customerName: 'Ananya Iyer',
     phone: '+91 99887 66554',
     table: 'Delivery #41',
@@ -216,7 +216,9 @@ export const INITIAL_ORDERS = [
   },
   {
     _id: 'ord-005',
-    orderNo: 'ORD-20261114-005',
+    dailyOrderNo: 5, // Order #5 of the day
+    orderDate: '2026-11-14',
+    orderNo: 'ORD-20261114-#5',
     customerName: 'Vikram Joshi',
     phone: '+91 98711 55443',
     table: 'Table 1',
@@ -245,7 +247,9 @@ export const INITIAL_ORDERS = [
   },
   {
     _id: 'ord-006',
-    orderNo: 'ORD-20261114-006',
+    dailyOrderNo: 6, // Order #6 of the day
+    orderDate: '2026-11-14',
+    orderNo: 'ORD-20261114-#6',
     customerName: 'Meera Nair',
     phone: '+91 97455 12345',
     table: 'Takeaway',

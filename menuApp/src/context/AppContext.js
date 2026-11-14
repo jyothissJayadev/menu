@@ -1,5 +1,5 @@
 // src/context/AppContext.js
-import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import React, { createContext, useContext, useState, useMemo } from 'react';
 import {
   INITIAL_CATEGORIES,
   INITIAL_ITEMS,
@@ -26,8 +26,8 @@ export const AppProvider = ({ children }) => {
   // --- ORDER ACTIONS ---
 
   /**
-   * Updates order status to next stage:
-   * pending -> cooking -> completed -> delivered (or explicit status)
+   * Advances order status to next stage:
+   * pending -> cooking -> completed -> delivered
    */
   const updateOrderStatus = (orderId, newStatus) => {
     setOrders((prev) =>
@@ -51,6 +51,40 @@ export const AppProvider = ({ children }) => {
   };
 
   /**
+   * Reverts order status backwards:
+   * cooking -> pending
+   * completed -> cooking (clears completion timestamp & duration)
+   * delivered -> completed
+   * cancelled -> pending
+   */
+  const revertOrderStatus = (orderId) => {
+    setOrders((prev) =>
+      prev.map((order) => {
+        if (order._id !== orderId) return order;
+
+        let prevStatus = order.status;
+        const updated = { ...order };
+
+        if (order.status === 'cooking') {
+          prevStatus = 'pending';
+        } else if (order.status === 'completed') {
+          prevStatus = 'cooking';
+          delete updated.endTime;
+          delete updated.durationMinutes;
+        } else if (order.status === 'delivered') {
+          prevStatus = 'completed';
+        } else if (order.status === 'cancelled') {
+          prevStatus = 'pending';
+          delete updated.cancelReason;
+        }
+
+        updated.status = prevStatus;
+        return updated;
+      })
+    );
+  };
+
+  /**
    * Cancel an order
    */
   const cancelOrder = (orderId, reason = 'Cancelled by shop') => {
@@ -65,6 +99,8 @@ export const AppProvider = ({ children }) => {
 
   /**
    * Simulate a new incoming customer order from the Web Menu
+   * Sequence resets based on day (Order #1 on day's first order)
+   * Full order ID combines daily sequence and date for guaranteed uniqueness.
    */
   const simulateIncomingOrder = () => {
     const randomItemsPool = [
@@ -103,11 +139,21 @@ export const AppProvider = ({ children }) => {
 
     const names = ['Kavita Rao', 'Siddharth Sen', 'Divya Menon', 'Rahul Kapoor', 'Tanya Bansal'];
     const selectedName = names[Math.floor(Math.random() * names.length)];
-    const randomNo = String(orders.length + 1).padStart(3, '0');
+
+    // Calculate daily order sequence
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const todayKey = todayIso.replace(/-/g, '');
+    const todaysOrders = orders.filter(
+      (o) => (o.orderDate || '').replace(/-/g, '') === todayKey
+    );
+    const nextDailyNo = todaysOrders.length + 1;
+    const uniqueOrderNo = `ORD-${todayKey}-#${nextDailyNo}`;
 
     const newOrder = {
       _id: `ord-${Date.now()}`,
-      orderNo: `ORD-20261114-${randomNo}`,
+      dailyOrderNo: nextDailyNo, // Day-based sequence (Order #1, #2...)
+      orderDate: todayIso,
+      orderNo: uniqueOrderNo,   // Combined unique date + daily order ID
       customerName: selectedName,
       phone: `+91 9${Math.floor(100000000 + Math.random() * 900000000)}`,
       table: Math.random() > 0.5 ? `Table ${Math.floor(Math.random() * 6) + 1}` : 'Takeaway',
@@ -115,7 +161,11 @@ export const AppProvider = ({ children }) => {
       total: totalCalc,
       startTime: new Date().toISOString(),
       notes: 'New live web order! Please confirm quickly.',
-      items: randomPick,
+      items: randomPick.map((it) => ({
+        ...it,
+        orderIdRef: uniqueOrderNo,
+        orderDate: todayIso,
+      })),
     };
 
     setOrders((prev) => [newOrder, ...prev]);
@@ -194,13 +244,11 @@ export const AppProvider = ({ children }) => {
 
   /**
    * Add a new category
-   * Added immediately to the list and becomes selectable for this and other items.
    */
   const addCategory = (name, icon = 'gift') => {
     const trimmed = name ? name.trim() : '';
     if (!trimmed) return null;
 
-    // Check if category name already exists
     const existing = categories.find(
       (c) => c.name.toLowerCase() === trimmed.toLowerCase()
     );
@@ -220,7 +268,7 @@ export const AppProvider = ({ children }) => {
   };
 
   /**
-   * Clean up any categories that have 0 items (e.g. if user created category but canceled)
+   * Clean up any categories that have 0 items
    */
   const cleanupEmptyCategories = () => {
     setCategories((prevCats) => {
@@ -275,6 +323,7 @@ export const AppProvider = ({ children }) => {
     activeStatusFilter,
     setActiveStatusFilter,
     updateOrderStatus,
+    revertOrderStatus,
     cancelOrder,
     simulateIncomingOrder,
     addItem,

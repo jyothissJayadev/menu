@@ -17,7 +17,7 @@ import { StatusBadge } from './StatusBadge';
 import { useApp } from '../context/AppContext';
 
 export const OrderDetailModal = ({ order, visible, onClose }) => {
-  const { updateOrderStatus, cancelOrder } = useApp();
+  const { updateOrderStatus, revertOrderStatus, cancelOrder } = useApp();
 
   if (!order) return null;
 
@@ -55,6 +55,11 @@ export const OrderDetailModal = ({ order, visible, onClose }) => {
     }
   };
 
+  const handleRevert = () => {
+    revertOrderStatus(order._id);
+    onClose();
+  };
+
   const formattedDate = new Date(order.startTime).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
@@ -72,8 +77,17 @@ export const OrderDetailModal = ({ order, visible, onClose }) => {
           {/* Header */}
           <View style={styles.header}>
             <View>
-              <Text style={styles.orderNumber}>{order.orderNo}</Text>
-              <Text style={styles.orderTime}>Ordered at {formattedDate}</Text>
+              <View style={styles.orderIdentRow}>
+                <View style={styles.dailyBadge}>
+                  <Text style={styles.dailyBadgeText}>
+                    Order #{order.dailyOrderNo || '1'}
+                  </Text>
+                </View>
+                <Text style={styles.orderNumber}>{order.orderNo}</Text>
+              </View>
+              <Text style={styles.orderTime}>
+                Ordered at {formattedDate} • {order.orderDate || new Date(order.startTime).toLocaleDateString()}
+              </Text>
             </View>
             <View style={styles.headerRight}>
               <StatusBadge status={order.status} />
@@ -192,43 +206,78 @@ export const OrderDetailModal = ({ order, visible, onClose }) => {
             )}
 
             {order.status === 'cooking' && (
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.readyActionBtn]}
-                onPress={() => {
-                  updateOrderStatus(order._id, 'completed');
-                  onClose();
-                }}
-              >
-                <Ionicons name="checkmark-done" size={18} color={COLORS.textWhite} />
-                <Text style={styles.primaryActionBtnText}>Mark Ready / Baked</Text>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.revertBtn]}
+                  onPress={handleRevert}
+                >
+                  <Ionicons name="arrow-undo" size={16} color={COLORS.textSecondary} />
+                  <Text style={styles.revertBtnText}>↩ Revert to Pending</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.readyActionBtn]}
+                  onPress={() => {
+                    updateOrderStatus(order._id, 'completed');
+                    onClose();
+                  }}
+                >
+                  <Ionicons name="checkmark-done" size={18} color={COLORS.textWhite} />
+                  <Text style={styles.primaryActionBtnText}>Mark Ready</Text>
+                </TouchableOpacity>
+              </>
             )}
 
             {order.status === 'completed' && (
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.deliverActionBtn]}
-                onPress={() => {
-                  updateOrderStatus(order._id, 'delivered');
-                  onClose();
-                }}
-              >
-                <Ionicons name="bag-check" size={18} color={COLORS.textWhite} />
-                <Text style={styles.primaryActionBtnText}>Complete Delivery / Pickup</Text>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.revertBtn]}
+                  onPress={handleRevert}
+                >
+                  <Ionicons name="arrow-undo" size={16} color={COLORS.textSecondary} />
+                  <Text style={styles.revertBtnText}>↩ Revert to Cooking</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.deliverActionBtn]}
+                  onPress={() => {
+                    updateOrderStatus(order._id, 'delivered');
+                    onClose();
+                  }}
+                >
+                  <Ionicons name="bag-check" size={18} color={COLORS.textWhite} />
+                  <Text style={styles.primaryActionBtnText}>Complete Delivery</Text>
+                </TouchableOpacity>
+              </>
             )}
 
             {order.status === 'delivered' && (
-              <View style={styles.deliveredNotice}>
-                <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
-                <Text style={styles.deliveredNoticeText}>Order Completed & Delivered</Text>
-              </View>
+              <>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.revertBtn]}
+                  onPress={handleRevert}
+                >
+                  <Ionicons name="arrow-undo" size={16} color={COLORS.textSecondary} />
+                  <Text style={styles.revertBtnText}>↩ Revert to Ready</Text>
+                </TouchableOpacity>
+
+                <View style={styles.deliveredNotice}>
+                  <Ionicons name="checkmark-circle" size={16} color={COLORS.success} />
+                  <Text style={styles.deliveredNoticeText}>Delivered</Text>
+                </View>
+              </>
             )}
 
             {order.status === 'cancelled' && (
-              <View style={styles.cancelledNotice}>
-                <Ionicons name="close-circle" size={18} color={COLORS.danger} />
-                <Text style={styles.cancelledNoticeText}>Order Cancelled</Text>
-              </View>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.revertBtn, { flex: 1 }]}
+                onPress={handleRevert}
+              >
+                <Ionicons name="refresh" size={16} color={COLORS.primary} />
+                <Text style={[styles.revertBtnText, { color: COLORS.primary }]}>
+                  ↩ Reopen / Restore Order
+                </Text>
+              </TouchableOpacity>
             )}
           </View>
         </View>
@@ -261,15 +310,31 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
   },
+  orderIdentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dailyBadge: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  dailyBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.textWhite,
+  },
   orderNumber: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
     color: COLORS.textPrimary,
   },
   orderTime: {
     fontSize: 12,
     color: COLORS.textSecondary,
-    marginTop: 2,
+    marginTop: 3,
   },
   headerRight: {
     flexDirection: 'row',
@@ -501,6 +566,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.danger,
   },
+  revertBtn: {
+    backgroundColor: COLORS.surfaceAlt,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 12,
+  },
+  revertBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+  },
   primaryActionBtn: {
     backgroundColor: COLORS.primary,
   },
@@ -529,20 +605,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: COLORS.success,
-  },
-  cancelledNotice: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    backgroundColor: COLORS.dangerLight,
-    borderRadius: 10,
-    gap: 6,
-  },
-  cancelledNoticeText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.danger,
   },
 });

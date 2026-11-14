@@ -5,7 +5,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../theme/colors';
@@ -13,7 +12,7 @@ import { StatusBadge } from './StatusBadge';
 import { useApp } from '../context/AppContext';
 
 export const OrderCard = ({ order, onPress }) => {
-  const { updateOrderStatus, cancelOrder } = useApp();
+  const { updateOrderStatus, revertOrderStatus, cancelOrder } = useApp();
 
   const getElapsedTime = (isoString) => {
     const diffMs = Date.now() - new Date(isoString).getTime();
@@ -24,6 +23,17 @@ export const OrderCard = ({ order, onPress }) => {
     return `${hours}h ago`;
   };
 
+  // Revert button text based on current status
+  const getRevertLabel = () => {
+    if (order.status === 'cooking') return 'Pending';
+    if (order.status === 'completed') return 'Cooking';
+    if (order.status === 'delivered') return 'Ready';
+    if (order.status === 'cancelled') return 'Reopen';
+    return null;
+  };
+
+  const revertTarget = getRevertLabel();
+
   return (
     <TouchableOpacity
       style={styles.card}
@@ -33,28 +43,36 @@ export const OrderCard = ({ order, onPress }) => {
       {/* Top Header */}
       <View style={styles.cardHeader}>
         <View style={styles.orderIdent}>
-          <Text style={styles.orderNo}>{order.orderNo}</Text>
-          <View style={styles.tablePill}>
-            <Ionicons name="location" size={11} color={COLORS.primaryDark} />
-            <Text style={styles.tablePillText}>{order.table || 'Takeaway'}</Text>
+          {/* Prominent Day-Based Order Badge */}
+          <View style={styles.dailyBadge}>
+            <Text style={styles.dailyBadgeText}>
+              Order #{order.dailyOrderNo || '1'}
+            </Text>
           </View>
+          {/* Unique date-based order code */}
+          <Text style={styles.orderNo}>{order.orderNo}</Text>
         </View>
 
         <View style={styles.headerRight}>
-          <View style={styles.timeWrapper}>
-            <Ionicons name="time-outline" size={12} color={COLORS.textLight} />
-            <Text style={styles.timeText}>{getElapsedTime(order.startTime)}</Text>
+          <View style={styles.tablePill}>
+            <Ionicons name="location" size={10} color={COLORS.primaryDark} />
+            <Text style={styles.tablePillText}>{order.table || 'Takeaway'}</Text>
           </View>
           <StatusBadge status={order.status} size="small" />
         </View>
       </View>
 
-      {/* Customer Info */}
+      {/* Customer Info & Elapsed Time */}
       <View style={styles.customerRow}>
-        <Ionicons name="person-circle-outline" size={16} color={COLORS.textSecondary} />
+        <Ionicons name="person-circle-outline" size={15} color={COLORS.textSecondary} />
         <Text style={styles.customerName}>{order.customerName}</Text>
         <Text style={styles.customerDot}>•</Text>
         <Text style={styles.customerPhone}>{order.phone}</Text>
+        <View style={{ flex: 1 }} />
+        <View style={styles.timeWrapper}>
+          <Ionicons name="time-outline" size={11} color={COLORS.textLight} />
+          <Text style={styles.timeText}>{getElapsedTime(order.startTime)}</Text>
+        </View>
       </View>
 
       {/* Items Preview */}
@@ -80,7 +98,7 @@ export const OrderCard = ({ order, onPress }) => {
         </View>
       )}
 
-      {/* Card Footer: Total & Status Transition Buttons */}
+      {/* Card Footer: Total & Status Transition Controls */}
       <View style={styles.cardFooter}>
         <View style={styles.totalBlock}>
           <Text style={styles.totalLabel}>Total</Text>
@@ -88,6 +106,22 @@ export const OrderCard = ({ order, onPress }) => {
         </View>
 
         <View style={styles.buttonsGroup}>
+          {/* Optional Revert Button for all non-pending statuses */}
+          {revertTarget && (
+            <TouchableOpacity
+              style={styles.btnRevert}
+              onPress={(e) => {
+                e.stopPropagation();
+                revertOrderStatus(order._id);
+              }}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="arrow-undo" size={13} color={COLORS.textSecondary} />
+              <Text style={styles.btnRevertText}>↩ to {revertTarget}</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Forward status progression buttons */}
           {order.status === 'pending' && (
             <>
               <TouchableOpacity
@@ -142,14 +176,14 @@ export const OrderCard = ({ order, onPress }) => {
 
           {order.status === 'delivered' && (
             <View style={styles.fulfilledBadge}>
-              <Ionicons name="checkmark-circle" size={14} color={COLORS.success} />
+              <Ionicons name="checkmark-circle" size={13} color={COLORS.success} />
               <Text style={styles.fulfilledText}>Fulfilled</Text>
             </View>
           )}
 
           {order.status === 'cancelled' && (
             <View style={styles.cancelledBadge}>
-              <Ionicons name="close-circle" size={14} color={COLORS.danger} />
+              <Ionicons name="close-circle" size={13} color={COLORS.danger} />
               <Text style={styles.cancelledText}>Cancelled</Text>
             </View>
           )}
@@ -180,10 +214,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  orderNo: {
-    fontSize: 15,
+  dailyBadge: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  dailyBadgeText: {
+    fontSize: 12,
     fontWeight: '800',
-    color: COLORS.textPrimary,
+    color: COLORS.textWhite,
+    letterSpacing: 0.2,
+  },
+  orderNo: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   tablePill: {
     flexDirection: 'row',
@@ -195,20 +246,14 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   tablePillText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     color: COLORS.primaryDark,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
   },
   timeWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    marginRight: 4,
   },
   timeText: {
     fontSize: 11,
@@ -217,7 +262,7 @@ const styles = StyleSheet.create({
   customerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
     gap: 4,
   },
   customerName: {
@@ -308,6 +353,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
+  btnRevert: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surfaceAlt,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    gap: 4,
+  },
+  btnRevertText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+  },
   btnReject: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -362,12 +423,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.successLight,
     paddingVertical: 4,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     borderRadius: 6,
-    gap: 4,
+    gap: 3,
   },
   fulfilledText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: COLORS.success,
   },
@@ -376,12 +437,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.dangerLight,
     paddingVertical: 4,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     borderRadius: 6,
-    gap: 4,
+    gap: 3,
   },
   cancelledText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: COLORS.danger,
   },

@@ -172,7 +172,12 @@ export const HistoryScreen = () => {
               >
                 <View style={styles.cardHeader}>
                   <View>
-                    <Text style={styles.orderNo}>{item.orderNo}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                      <View style={styles.dailyBadge}>
+                        <Text style={styles.dailyBadgeText}>Order #{item.dailyOrderNo || '1'}</Text>
+                      </View>
+                      <Text style={styles.orderNo}>{item.orderNo}</Text>
+                    </View>
                     <Text style={styles.dateText}>
                       {new Date(item.startTime).toLocaleDateString([], {
                         month: 'short',
@@ -391,9 +396,20 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 6,
   },
-  orderNo: {
-    fontSize: 14,
+  dailyBadge: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  dailyBadgeText: {
+    fontSize: 10,
     fontWeight: '800',
+    color: COLORS.textWhite,
+  },
+  orderNo: {
+    fontSize: 13,
+    fontWeight: '700',
     color: COLORS.textPrimary,
   },
   dateText: {
