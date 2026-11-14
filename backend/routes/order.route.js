@@ -36,17 +36,25 @@ router.post("/", async (req, res) => {
 
     const orderItems = items.map((i) => {
       const it = itemMap[String(i.itemId)];
+      const variantName = i.variant || i.weight || "";
+      const itemPrice = typeof i.price === "number" && i.price > 0
+        ? i.price
+        : it
+        ? (it.offer && it.offerPrice ? it.offerPrice : it.price)
+        : 0;
+
       if (!it) {
         // Fallback if item was passed with name & price directly
         return {
           itemId: i.itemId,
           name: i.name || "Special Item",
+          variant: variantName,
           qty: i.qty || 1,
-          price: i.price || 0,
+          price: itemPrice,
           addons: [],
         };
       }
-      const price = it.offer && it.offerPrice ? it.offerPrice : it.price;
+
       const selectedAddons = (i.addons || [])
         .map((aid) => {
           const a = addonMap[String(aid)];
@@ -61,8 +69,9 @@ router.post("/", async (req, res) => {
       return {
         itemId: it._id,
         name: it.name,
+        variant: variantName,
         qty: i.qty || 1,
-        price: price + addonsTotal,
+        price: itemPrice + addonsTotal,
         addons: selectedAddons.map((a) => a.addonId),
       };
     });

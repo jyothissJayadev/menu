@@ -144,6 +144,7 @@ router.post("/items", async (req, res) => {
       veg = true,
       offer = false,
       offerPrice = null,
+      variants = [],
       available = true,
     } = req.body;
 
@@ -183,6 +184,7 @@ router.post("/items", async (req, res) => {
       veg,
       offer: Boolean(offer),
       offerPrice: offer && offerPrice ? Number(offerPrice) : null,
+      variants: Array.isArray(variants) ? variants : [],
       available: available !== undefined ? Boolean(available) : true,
       timing: [],
     });

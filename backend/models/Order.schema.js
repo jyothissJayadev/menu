@@ -8,6 +8,7 @@ const OrderItemSubSchema = new mongoose.Schema(
       required: true,
     },
     name: { type: String, required: true },
+    variant: { type: String, default: "" }, // e.g. "0.5 kg", "1 kg", "2 kg"
     qty: { type: Number, required: true, default: 1 },
     price: { type: Number, required: true },
     addons: [{ type: mongoose.Schema.Types.ObjectId, ref: "Addon" }],
