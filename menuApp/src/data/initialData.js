@@ -95,12 +95,16 @@ export const INITIAL_ITEMS = [
   },
 ];
 
+const todayDateStr = new Date().toISOString().slice(0, 10);
+const yesterdayDateObj = new Date(Date.now() - 24 * 3600 * 1000);
+const yesterdayDateStr = yesterdayDateObj.toISOString().slice(0, 10);
+
 export const INITIAL_ORDERS = [
   {
     _id: 'ord-001',
-    dailyOrderNo: 1, // Order #1 of the day
-    orderDate: '2026-11-14',
-    orderNo: 'ORD-20261114-#1', // Unique date + daily order ID
+    dailyOrderNo: 1, // Today's Order #1
+    orderDate: todayDateStr,
+    orderNo: `ORD-${todayDateStr.replace(/-/g, '')}-1`,
     customerName: 'Aarav Sharma',
     phone: '+91 98765 43210',
     table: 'Table 4',
@@ -127,9 +131,9 @@ export const INITIAL_ORDERS = [
   },
   {
     _id: 'ord-002',
-    dailyOrderNo: 2, // Order #2 of the day
-    orderDate: '2026-11-14',
-    orderNo: 'ORD-20261114-#2',
+    dailyOrderNo: 2, // Today's Order #2
+    orderDate: todayDateStr,
+    orderNo: `ORD-${todayDateStr.replace(/-/g, '')}-2`,
     customerName: 'Priya Nambiar',
     phone: '+91 94471 22890',
     table: 'Takeaway',
@@ -149,9 +153,9 @@ export const INITIAL_ORDERS = [
   },
   {
     _id: 'ord-003',
-    dailyOrderNo: 3, // Order #3 of the day
-    orderDate: '2026-11-14',
-    orderNo: 'ORD-20261114-#3',
+    dailyOrderNo: 3, // Today's Order #3
+    orderDate: todayDateStr,
+    orderNo: `ORD-${todayDateStr.replace(/-/g, '')}-3`,
     customerName: 'Rohan Verma',
     phone: '+91 98200 11234',
     table: 'Table 2',
@@ -178,9 +182,9 @@ export const INITIAL_ORDERS = [
   },
   {
     _id: 'ord-004',
-    dailyOrderNo: 4, // Order #4 of the day
-    orderDate: '2026-11-14',
-    orderNo: 'ORD-20261114-#4',
+    dailyOrderNo: 4, // Today's Order #4
+    orderDate: todayDateStr,
+    orderNo: `ORD-${todayDateStr.replace(/-/g, '')}-4`,
     customerName: 'Ananya Iyer',
     phone: '+91 99887 66554',
     table: 'Delivery #41',
@@ -216,16 +220,16 @@ export const INITIAL_ORDERS = [
   },
   {
     _id: 'ord-005',
-    dailyOrderNo: 5, // Order #5 of the day
-    orderDate: '2026-11-14',
-    orderNo: 'ORD-20261114-#5',
+    dailyOrderNo: 1, // Yesterday's Order #1
+    orderDate: yesterdayDateStr,
+    orderNo: `ORD-${yesterdayDateStr.replace(/-/g, '')}-1`,
     customerName: 'Vikram Joshi',
     phone: '+91 98711 55443',
     table: 'Table 1',
     status: 'delivered',
     total: 300,
-    startTime: new Date(Date.now() - 75 * 60 * 1000).toISOString(),
-    endTime: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+    startTime: new Date(Date.now() - 25 * 3600 * 1000).toISOString(),
+    endTime: new Date(Date.now() - 24.5 * 3600 * 1000).toISOString(),
     durationMinutes: 30,
     notes: 'Payment collected by UPI.',
     items: [
@@ -247,18 +251,18 @@ export const INITIAL_ORDERS = [
   },
   {
     _id: 'ord-006',
-    dailyOrderNo: 6, // Order #6 of the day
-    orderDate: '2026-11-14',
-    orderNo: 'ORD-20261114-#6',
+    dailyOrderNo: 2, // Yesterday's Order #2
+    orderDate: yesterdayDateStr,
+    orderNo: `ORD-${yesterdayDateStr.replace(/-/g, '')}-2`,
     customerName: 'Meera Nair',
     phone: '+91 97455 12345',
     table: 'Takeaway',
     status: 'delivered',
     total: 750,
-    startTime: new Date(Date.now() - 110 * 60 * 1000).toISOString(),
-    endTime: new Date(Date.now() - 85 * 60 * 1000).toISOString(),
+    startTime: new Date(Date.now() - 28 * 3600 * 1000).toISOString(),
+    endTime: new Date(Date.now() - 27.5 * 3600 * 1000).toISOString(),
     durationMinutes: 25,
-    notes: 'Pre-ordered for 6 PM pickup.',
+    notes: 'Pre-ordered for pickup.',
     items: [
       {
         itemId: 'item-101',
@@ -314,7 +318,7 @@ export const INITIAL_CUSTOMERS = [
     phone: '+91 98711 55443',
     totalOrders: 2,
     totalSpend: 780,
-    lastOrderDate: 'Today, 10:20 AM',
+    lastOrderDate: 'Yesterday, 4:20 PM',
     favoriteItem: 'French Butter Croissant',
   },
 ];

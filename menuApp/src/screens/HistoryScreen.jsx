@@ -4,6 +4,7 @@ import {
   View,
   Text,
   StyleSheet,
+  SectionList,
   FlatList,
   TextInput,
   TouchableOpacity,
@@ -26,8 +27,8 @@ export const HistoryScreen = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [statusSubFilter, setStatusSubFilter] = useState('all'); // 'all', 'delivered', 'cancelled'
 
-  // Past orders (delivered or cancelled, or all with dates)
-  const pastOrders = useMemo(() => {
+  // Filtered past orders
+  const filteredPastOrders = useMemo(() => {
     return orders.filter((order) => {
       // Status filter
       if (statusSubFilter === 'delivered' && order.status !== 'delivered') return false;
@@ -45,6 +46,57 @@ export const HistoryScreen = () => {
       return true;
     });
   }, [orders, statusSubFilter, searchQuery]);
+
+  // Group orders strictly by date for section separation
+  const dateSectionedOrders = useMemo(() => {
+    const groupsMap = {};
+
+    filteredPastOrders.forEach((order) => {
+      const orderDateObj = new Date(order.startTime);
+      const today = new Date();
+      const yesterday = new Date();
+      yesterday.setDate(today.getDate() - 1);
+
+      const isToday =
+        orderDateObj.getFullYear() === today.getFullYear() &&
+        orderDateObj.getMonth() === today.getMonth() &&
+        orderDateObj.getDate() === today.getDate();
+
+      const isYesterday =
+        orderDateObj.getFullYear() === yesterday.getFullYear() &&
+        orderDateObj.getMonth() === yesterday.getMonth() &&
+        orderDateObj.getDate() === yesterday.getDate();
+
+      let headerTitle;
+      const formattedDatePart = orderDateObj.toLocaleDateString([], {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+
+      if (isToday) {
+        headerTitle = `Today • ${formattedDatePart}`;
+      } else if (isYesterday) {
+        headerTitle = `Yesterday • ${formattedDatePart}`;
+      } else {
+        const weekday = orderDateObj.toLocaleDateString([], { weekday: 'short' });
+        headerTitle = `${weekday} • ${formattedDatePart}`;
+      }
+
+      if (!groupsMap[headerTitle]) {
+        groupsMap[headerTitle] = {
+          title: headerTitle,
+          data: [],
+          totalRevenue: 0,
+        };
+      }
+
+      groupsMap[headerTitle].data.push(order);
+      groupsMap[headerTitle].totalRevenue += order.total || 0;
+    });
+
+    return Object.values(groupsMap);
+  }, [filteredPastOrders]);
 
   // Customers filtered
   const filteredCustomers = useMemo(() => {
@@ -134,7 +186,7 @@ export const HistoryScreen = () => {
         </View>
       </View>
 
-      {/* ORDERS ARCHIVE TAB */}
+      {/* ORDERS ARCHIVE TAB: SEPARATED BY DATE */}
       {activeSegment === 'orders' ? (
         <>
           {/* Subfilter pills */}
@@ -160,10 +212,26 @@ export const HistoryScreen = () => {
             ))}
           </View>
 
-          <FlatList
-            data={pastOrders}
+          <SectionList
+            sections={dateSectionedOrders}
             keyExtractor={(item) => item._id}
             contentContainerStyle={styles.listContent}
+            stickySectionHeadersEnabled={false}
+            renderSectionHeader={({ section }) => (
+              <View style={styles.dateHeaderContainer}>
+                <View style={styles.dateHeaderLeft}>
+                  <View style={styles.calendarIconBadge}>
+                    <Ionicons name="calendar" size={13} color={COLORS.primaryDark} />
+                  </View>
+                  <Text style={styles.dateHeaderTitle}>{section.title}</Text>
+                </View>
+                <View style={styles.dateHeaderSummary}>
+                  <Text style={styles.dateHeaderSummaryText}>
+                    {section.data.length} {section.data.length === 1 ? 'order' : 'orders'} • ₹{section.totalRevenue}
+                  </Text>
+                </View>
+              </View>
+            )}
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.historyCard}
@@ -172,18 +240,13 @@ export const HistoryScreen = () => {
               >
                 <View style={styles.cardHeader}>
                   <View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                    <View style={styles.orderIdentRow}>
                       <View style={styles.dailyBadge}>
                         <Text style={styles.dailyBadgeText}>Order #{item.dailyOrderNo || '1'}</Text>
                       </View>
                       <Text style={styles.orderNo}>{item.orderNo}</Text>
                     </View>
                     <Text style={styles.dateText}>
-                      {new Date(item.startTime).toLocaleDateString([], {
-                        month: 'short',
-                        day: 'numeric',
-                      })}{' '}
-                      •{' '}
                       {new Date(item.startTime).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit',
@@ -378,8 +441,50 @@ const styles = StyleSheet.create({
     color: COLORS.primaryDark,
   },
   listContent: {
-    padding: 16,
+    paddingHorizontal: 16,
     paddingBottom: 40,
+  },
+  dateHeaderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 16,
+    paddingBottom: 8,
+    marginBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+  },
+  dateHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  calendarIconBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateHeaderTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    letterSpacing: 0.1,
+  },
+  dateHeaderSummary: {
+    backgroundColor: COLORS.surfaceAlt,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  dateHeaderSummaryText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
   },
   historyCard: {
     backgroundColor: COLORS.surface,
@@ -396,6 +501,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 6,
   },
+  orderIdentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
   dailyBadge: {
     backgroundColor: COLORS.primary,
     paddingHorizontal: 6,
@@ -408,9 +519,9 @@ const styles = StyleSheet.create({
     color: COLORS.textWhite,
   },
   orderNo: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
   },
   dateText: {
     fontSize: 11,
