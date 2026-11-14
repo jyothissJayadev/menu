@@ -220,6 +220,58 @@ export const AppProvider = ({ children }) => {
     return localOrder;
   };
 
+  /**
+   * Create a new custom/manual order from staff dashboard
+   */
+  const createNewOrder = async (orderData) => {
+    const totalCalc = (orderData.items || []).reduce(
+      (sum, it) => sum + (Number(it.price) || 0) * (Number(it.qty) || 1),
+      0
+    );
+
+    const maxOrderNum = orders.reduce(
+      (max, o) => Math.max(max, o.orderNumber || 100),
+      100
+    );
+    const nextOrderNumber = maxOrderNum + 1;
+    const uniqueOrderNo = `ORD-${nextOrderNumber}`;
+
+    const orderPayload = {
+      orderNumber: nextOrderNumber,
+      orderNo: uniqueOrderNo,
+      name: orderData.name || orderData.customerName || 'In-Store Customer',
+      customerName: orderData.name || orderData.customerName || 'In-Store Customer',
+      phone: orderData.phone || '',
+      table: orderData.table || 'Takeaway',
+      notes: orderData.notes || '',
+      items: orderData.items || [],
+      total: totalCalc,
+    };
+
+    // If live connected, create in backend
+    if (company && company._id) {
+      try {
+        const createdOrder = await api.createOrder(company._id, orderPayload);
+        if (createdOrder) {
+          setOrders((prev) => [createdOrder, ...prev]);
+          return createdOrder;
+        }
+      } catch (err) {
+        console.warn('Backend createOrder error:', err);
+      }
+    }
+
+    // Local fallback
+    const localOrder = {
+      _id: `ord-${Date.now()}`,
+      ...orderPayload,
+      status: 'pending',
+      startTime: new Date().toISOString(),
+    };
+    setOrders((prev) => [localOrder, ...prev]);
+    return localOrder;
+  };
+
   // --- MENU ITEM & CATEGORY ACTIONS ---
 
   /**
@@ -428,6 +480,7 @@ export const AppProvider = ({ children }) => {
     revertOrderStatus,
     cancelOrder,
     simulateIncomingOrder,
+    createNewOrder,
     addItem,
     updateItem,
     deleteItem,

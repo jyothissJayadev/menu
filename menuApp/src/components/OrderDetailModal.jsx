@@ -114,7 +114,7 @@ export const OrderDetailModal = ({ order, visible, onClose }) => {
                 <Ionicons name="person" size={20} color={COLORS.primaryDark} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.customerName}>{order.customerName}</Text>
+                <Text style={styles.customerName}>{order.customerName || order.name || 'Customer'}</Text>
                 <Text style={styles.customerPhone}>{order.phone}</Text>
                 <View style={styles.tableTag}>
                   <Ionicons name="location-outline" size={12} color={COLORS.textSecondary} />

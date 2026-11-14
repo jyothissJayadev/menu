@@ -17,6 +17,7 @@ import { useApp } from '../context/AppContext';
 import { Header } from '../components/Header';
 import { OrderCard } from '../components/OrderCard';
 import { OrderDetailModal } from '../components/OrderDetailModal';
+import { CreateOrderModal } from '../components/CreateOrderModal';
 
 const FILTER_TABS = [
   { key: 'all', label: 'All Orders' },
@@ -30,6 +31,7 @@ export const OrdersScreen = () => {
   const { orders, stats, activeStatusFilter, setActiveStatusFilter, simulateIncomingOrder } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = () => {
@@ -51,8 +53,8 @@ export const OrdersScreen = () => {
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const matchesNo = order.orderNo.toLowerCase().includes(query);
-        const matchesName = order.customerName.toLowerCase().includes(query);
-        const matchesPhone = order.phone.includes(query);
+        const matchesName = (order.customerName || order.name || '').toLowerCase().includes(query);
+        const matchesPhone = (order.phone || '').includes(query);
         const matchesTable = (order.table || '').toLowerCase().includes(query);
         return matchesNo || matchesName || matchesPhone || matchesTable;
       }
@@ -68,13 +70,13 @@ export const OrdersScreen = () => {
         subtitle="Manage live orders received from the web menu"
       />
 
-      {/* Search Bar */}
-      <View style={styles.searchSection}>
+      {/* Top Search & Create Order Bar */}
+      <View style={styles.topBar}>
         <View style={styles.searchBar}>
           <Ionicons name="search" size={16} color={COLORS.textLight} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search by order #, customer name, phone..."
+            placeholder="Search order #, customer, phone..."
             placeholderTextColor={COLORS.textLight}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -85,6 +87,16 @@ export const OrdersScreen = () => {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Create Order Button */}
+        <TouchableOpacity
+          style={styles.newOrderBtn}
+          onPress={() => setIsCreateModalOpen(true)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={18} color={COLORS.textWhite} />
+          <Text style={styles.newOrderBtnText}>New Order</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Filter Tabs */}
@@ -160,22 +172,49 @@ export const OrdersScreen = () => {
                 ? `No orders currently in '${activeStatusFilter}' status.`
                 : 'There are no active orders matching your search.'}
             </Text>
-            <TouchableOpacity
-              style={styles.simulateBtn}
-              onPress={() => simulateIncomingOrder()}
-            >
-              <Ionicons name="sparkles" size={14} color={COLORS.textWhite} />
-              <Text style={styles.simulateBtnText}>Simulate New Web Order</Text>
-            </TouchableOpacity>
+
+            <View style={styles.emptyActionsRow}>
+              <TouchableOpacity
+                style={styles.emptyCreateBtn}
+                onPress={() => setIsCreateModalOpen(true)}
+              >
+                <Ionicons name="add-circle" size={16} color={COLORS.textWhite} />
+                <Text style={styles.emptyCreateBtnText}>Create New Order</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.simulateBtn}
+                onPress={() => simulateIncomingOrder()}
+              >
+                <Ionicons name="sparkles" size={14} color={COLORS.primaryDark} />
+                <Text style={styles.simulateBtnText}>Simulate Web Order</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         }
       />
+
+      {/* Floating Action Button (FAB) for Quick Order Entry */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setIsCreateModalOpen(true)}
+        activeOpacity={0.88}
+      >
+        <Ionicons name="add" size={22} color={COLORS.textWhite} />
+        <Text style={styles.fabText}>New Order</Text>
+      </TouchableOpacity>
 
       {/* Order Detail Modal */}
       <OrderDetailModal
         order={selectedOrder}
         visible={Boolean(selectedOrder)}
         onClose={() => setSelectedOrder(null)}
+      />
+
+      {/* Create Manual In-Store / Phone Order Modal */}
+      <CreateOrderModal
+        visible={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
       />
     </SafeAreaView>
   );
@@ -186,12 +225,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  searchSection: {
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 6,
+    gap: 10,
   },
   searchBar: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
@@ -202,6 +245,21 @@ const styles = StyleSheet.create({
     borderColor: COLORS.borderLight,
     gap: 8,
     ...SHADOWS.sm,
+  },
+  newOrderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    gap: 4,
+    ...SHADOWS.sm,
+  },
+  newOrderBtnText: {
+    color: COLORS.textWhite,
+    fontSize: 13,
+    fontWeight: '800',
   },
   searchInput: {
     flex: 1,
@@ -297,7 +355,14 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginBottom: 16,
   },
-  simulateBtn: {
+  emptyActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 6,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  emptyCreateBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.primary,
@@ -307,9 +372,44 @@ const styles = StyleSheet.create({
     gap: 6,
     ...SHADOWS.sm,
   },
-  simulateBtnText: {
+  emptyCreateBtnText: {
     fontSize: 13,
     fontWeight: '700',
     color: COLORS.textWhite,
+  },
+  simulateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primaryLight,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    gap: 6,
+  },
+  simulateBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.primaryDark,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 28,
+    gap: 6,
+    ...SHADOWS.lg,
+    zIndex: 99,
+  },
+  fabText: {
+    color: COLORS.textWhite,
+    fontSize: 13,
+    fontWeight: '800',
   },
 });

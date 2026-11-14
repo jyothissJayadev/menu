@@ -53,7 +53,7 @@ export const OrderCard = ({ order, onPress }) => {
       {/* Customer Info & Elapsed Time */}
       <View style={styles.customerRow}>
         <Ionicons name="person-circle-outline" size={15} color={COLORS.textSecondary} />
-        <Text style={styles.customerName}>{order.customerName}</Text>
+        <Text style={styles.customerName}>{order.customerName || order.name || 'Customer'}</Text>
         <Text style={styles.customerDot}>•</Text>
         <Text style={styles.customerPhone}>{order.phone}</Text>
         <View style={{ flex: 1 }} />
