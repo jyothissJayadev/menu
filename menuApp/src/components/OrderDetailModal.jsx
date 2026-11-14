@@ -60,6 +60,16 @@ export const OrderDetailModal = ({ order, visible, onClose }) => {
     onClose();
   };
 
+  const getRevertTarget = () => {
+    if (order.status === 'cooking') return 'Pending';
+    if (order.status === 'completed') return 'Cooking';
+    if (order.status === 'delivered') return 'Ready';
+    if (order.status === 'cancelled') return 'Reopen (Pending)';
+    return null;
+  };
+
+  const revertTarget = getRevertTarget();
+
   const formattedDate = new Date(order.startTime).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
@@ -180,41 +190,33 @@ export const OrderDetailModal = ({ order, visible, onClose }) => {
             </View>
           </ScrollView>
 
-          {/* Action Bar at Bottom */}
-          <View style={styles.actionsFooter}>
-            {order.status === 'pending' && (
-              <>
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.rejectBtn]}
-                  onPress={handleCancel}
-                >
-                  <Ionicons name="close" size={16} color={COLORS.danger} />
-                  <Text style={styles.rejectBtnText}>Reject</Text>
-                </TouchableOpacity>
+          {/* Action Footer: Primary Progression Button + Small Revert Option */}
+          <View style={styles.footerContainer}>
+            <View style={styles.actionsFooter}>
+              {order.status === 'pending' && (
+                <>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.rejectBtn]}
+                    onPress={handleCancel}
+                  >
+                    <Ionicons name="close" size={16} color={COLORS.danger} />
+                    <Text style={styles.rejectBtnText}>Reject</Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.primaryActionBtn]}
-                  onPress={() => {
-                    updateOrderStatus(order._id, 'cooking');
-                    onClose();
-                  }}
-                >
-                  <Ionicons name="flame" size={16} color={COLORS.textWhite} />
-                  <Text style={styles.primaryActionBtnText}>Accept & Start Cooking</Text>
-                </TouchableOpacity>
-              </>
-            )}
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.primaryActionBtn]}
+                    onPress={() => {
+                      updateOrderStatus(order._id, 'cooking');
+                      onClose();
+                    }}
+                  >
+                    <Ionicons name="flame" size={16} color={COLORS.textWhite} />
+                    <Text style={styles.primaryActionBtnText}>Accept & Start Cooking</Text>
+                  </TouchableOpacity>
+                </>
+              )}
 
-            {order.status === 'cooking' && (
-              <>
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.revertBtn]}
-                  onPress={handleRevert}
-                >
-                  <Ionicons name="arrow-undo" size={16} color={COLORS.textSecondary} />
-                  <Text style={styles.revertBtnText}>↩ Revert to Pending</Text>
-                </TouchableOpacity>
-
+              {order.status === 'cooking' && (
                 <TouchableOpacity
                   style={[styles.actionBtn, styles.readyActionBtn]}
                   onPress={() => {
@@ -223,21 +225,11 @@ export const OrderDetailModal = ({ order, visible, onClose }) => {
                   }}
                 >
                   <Ionicons name="checkmark-done" size={18} color={COLORS.textWhite} />
-                  <Text style={styles.primaryActionBtnText}>Mark Ready</Text>
+                  <Text style={styles.primaryActionBtnText}>Mark Ready / Baked</Text>
                 </TouchableOpacity>
-              </>
-            )}
+              )}
 
-            {order.status === 'completed' && (
-              <>
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.revertBtn]}
-                  onPress={handleRevert}
-                >
-                  <Ionicons name="arrow-undo" size={16} color={COLORS.textSecondary} />
-                  <Text style={styles.revertBtnText}>↩ Revert to Cooking</Text>
-                </TouchableOpacity>
-
+              {order.status === 'completed' && (
                 <TouchableOpacity
                   style={[styles.actionBtn, styles.deliverActionBtn]}
                   onPress={() => {
@@ -248,34 +240,33 @@ export const OrderDetailModal = ({ order, visible, onClose }) => {
                   <Ionicons name="bag-check" size={18} color={COLORS.textWhite} />
                   <Text style={styles.primaryActionBtnText}>Complete Delivery</Text>
                 </TouchableOpacity>
-              </>
-            )}
+              )}
 
-            {order.status === 'delivered' && (
-              <>
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.revertBtn]}
-                  onPress={handleRevert}
-                >
-                  <Ionicons name="arrow-undo" size={16} color={COLORS.textSecondary} />
-                  <Text style={styles.revertBtnText}>↩ Revert to Ready</Text>
-                </TouchableOpacity>
-
+              {order.status === 'delivered' && (
                 <View style={styles.deliveredNotice}>
-                  <Ionicons name="checkmark-circle" size={16} color={COLORS.success} />
-                  <Text style={styles.deliveredNoticeText}>Delivered</Text>
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
+                  <Text style={styles.deliveredNoticeText}>Order Delivered & Fulfilled</Text>
                 </View>
-              </>
-            )}
+              )}
 
-            {order.status === 'cancelled' && (
+              {order.status === 'cancelled' && (
+                <View style={styles.cancelledNotice}>
+                  <Ionicons name="close-circle" size={18} color={COLORS.danger} />
+                  <Text style={styles.cancelledNoticeText}>Order Cancelled</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Small Revert Option (only visible inside modal overlay) */}
+            {revertTarget && (
               <TouchableOpacity
-                style={[styles.actionBtn, styles.revertBtn, { flex: 1 }]}
+                style={styles.smallRevertRow}
                 onPress={handleRevert}
+                activeOpacity={0.7}
               >
-                <Ionicons name="refresh" size={16} color={COLORS.primary} />
-                <Text style={[styles.revertBtnText, { color: COLORS.primary }]}>
-                  ↩ Reopen / Restore Order
+                <Ionicons name="arrow-undo-outline" size={13} color={COLORS.textSecondary} />
+                <Text style={styles.smallRevertText}>
+                  ↩ Revert status to {revertTarget}
                 </Text>
               </TouchableOpacity>
             )}
@@ -327,7 +318,7 @@ const styles = StyleSheet.create({
     color: COLORS.textWhite,
   },
   orderNumber: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: COLORS.textPrimary,
   },
@@ -537,12 +528,15 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.primaryDark,
   },
-  actionsFooter: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingTop: 12,
+  footerContainer: {
     borderTopWidth: 1,
     borderTopColor: COLORS.borderLight,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 6,
+  },
+  actionsFooter: {
+    flexDirection: 'row',
     gap: 10,
   },
   actionBtn: {
@@ -550,7 +544,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 13,
     borderRadius: 12,
     gap: 6,
     ...SHADOWS.sm,
@@ -565,17 +559,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: COLORS.danger,
-  },
-  revertBtn: {
-    backgroundColor: COLORS.surfaceAlt,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingHorizontal: 12,
-  },
-  revertBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
   },
   primaryActionBtn: {
     backgroundColor: COLORS.primary,
@@ -605,5 +588,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: COLORS.success,
+  },
+  cancelledNotice: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    backgroundColor: COLORS.dangerLight,
+    borderRadius: 10,
+    gap: 6,
+  },
+  cancelledNoticeText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.danger,
+  },
+  smallRevertRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    marginTop: 6,
+    gap: 5,
+  },
+  smallRevertText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    textDecorationLine: 'underline',
   },
 });

@@ -19,7 +19,7 @@ import { COLORS, SHADOWS } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 
 export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
-  const { categories, addItem, updateItem, addCategory, cleanupEmptyCategories } = useApp();
+  const { categories, addItem, updateItem } = useApp();
 
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -30,10 +30,11 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
   const [available, setAvailable] = useState(true);
   const [image, setImage] = useState('');
 
-  // Dropdown state
+  // Dropdown & New Category State
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isAddingNewCat, setIsAddingNewCat] = useState(false);
-  const [newCatName, setNewCatName] = useState('');
+  const [newCatNameInput, setNewCatNameInput] = useState('');
+  const [assignedNewCategoryName, setAssignedNewCategoryName] = useState(null);
 
   useEffect(() => {
     if (initialItem) {
@@ -58,7 +59,8 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
     }
     setIsDropdownOpen(false);
     setIsAddingNewCat(false);
-    setNewCatName('');
+    setNewCatNameInput('');
+    setAssignedNewCategoryName(null);
   }, [initialItem, visible, categories]);
 
   // Handle image picking from phone storage
@@ -112,26 +114,26 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
     }
   };
 
-  // Handle adding new category directly from the dropdown
-  const handleCreateNewCategory = () => {
-    if (!newCatName.trim()) {
+  // Assign a newly created category name to this item
+  // Only officially created if the user completes saving the item!
+  const handleAssignNewCategory = () => {
+    const trimmed = newCatNameInput.trim();
+    if (!trimmed) {
       const msg = 'Please enter a category name.';
       if (Platform.OS === 'web') window.alert(msg);
       else Alert.alert('Required', msg);
       return;
     }
 
-    const created = addCategory(newCatName.trim());
-    if (created) {
-      setCategoryId(created._id);
-      setIsAddingNewCat(false);
-      setIsDropdownOpen(false);
-      setNewCatName('');
-    }
+    setAssignedNewCategoryName(trimmed);
+    setCategoryId(''); // Handled via newCategoryName on save
+    setIsAddingNewCat(false);
+    setIsDropdownOpen(false);
+    setNewCatNameInput('');
   };
 
   const handleClose = () => {
-    cleanupEmptyCategories();
+    setAssignedNewCategoryName(null);
     onClose();
   };
 
@@ -161,15 +163,20 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
     };
 
     if (initialItem) {
-      updateItem(initialItem._id, payload);
+      updateItem(initialItem._id, payload, assignedNewCategoryName);
     } else {
-      addItem(payload);
+      addItem(payload, assignedNewCategoryName);
     }
 
     handleClose();
   };
 
   const selectedCategoryObj = categories.find((c) => c._id === categoryId);
+  const displayCategoryLabel = assignedNewCategoryName
+    ? `${assignedNewCategoryName} (New)`
+    : selectedCategoryObj
+    ? selectedCategoryObj.name
+    : 'Select a Category';
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={handleClose}>
@@ -210,9 +217,7 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
             >
               <View style={styles.dropdownSelectedRow}>
                 <Ionicons name="pricetag-outline" size={16} color={COLORS.primaryDark} />
-                <Text style={styles.dropdownSelectedText}>
-                  {selectedCategoryObj ? selectedCategoryObj.name : 'Select a Category'}
-                </Text>
+                <Text style={styles.dropdownSelectedText}>{displayCategoryLabel}</Text>
               </View>
               <Ionicons
                 name={isDropdownOpen ? 'chevron-up' : 'chevron-down'}
@@ -226,7 +231,7 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
               <View style={styles.dropdownMenu}>
                 <ScrollView nestedScrollEnabled style={{ maxHeight: 180 }}>
                   {categories.map((cat) => {
-                    const isSelected = categoryId === cat._id;
+                    const isSelected = !assignedNewCategoryName && categoryId === cat._id;
                     return (
                       <TouchableOpacity
                         key={cat._id}
@@ -236,6 +241,7 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
                         ]}
                         onPress={() => {
                           setCategoryId(cat._id);
+                          setAssignedNewCategoryName(null);
                           setIsDropdownOpen(false);
                         }}
                       >
@@ -255,7 +261,7 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
                   })}
                 </ScrollView>
 
-                {/* Inline Add New Category Action */}
+                {/* Inline Add New Category Option */}
                 {!isAddingNewCat ? (
                   <TouchableOpacity
                     style={styles.addCatRow}
@@ -270,8 +276,8 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
                       style={styles.newCatInput}
                       placeholder="Enter new category name..."
                       placeholderTextColor={COLORS.textLight}
-                      value={newCatName}
-                      onChangeText={setNewCatName}
+                      value={newCatNameInput}
+                      onChangeText={setNewCatNameInput}
                       autoFocus
                     />
                     <View style={styles.newCatActions}>
@@ -279,16 +285,16 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
                         style={styles.newCatCancelBtn}
                         onPress={() => {
                           setIsAddingNewCat(false);
-                          setNewCatName('');
+                          setNewCatNameInput('');
                         }}
                       >
                         <Text style={styles.newCatCancelText}>Cancel</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.newCatConfirmBtn}
-                        onPress={handleCreateNewCategory}
+                        onPress={handleAssignNewCategory}
                       >
-                        <Text style={styles.newCatConfirmText}>Save Category</Text>
+                        <Text style={styles.newCatConfirmText}>Assign to Item</Text>
                       </TouchableOpacity>
                     </View>
                   </View>

@@ -12,10 +12,10 @@ const AppContext = createContext();
 export const AppProvider = ({ children }) => {
   const [items, setItems] = useState(INITIAL_ITEMS);
 
-  // Initialize categories, auto-pruning any category with 0 items on start
+  // Only categories that currently have at least one item assigned exist in the app
   const [categories, setCategories] = useState(() => {
-    const initialItemCatIds = new Set(INITIAL_ITEMS.map((i) => i.categoryId));
-    return INITIAL_CATEGORIES.filter((c) => initialItemCatIds.has(c._id));
+    const activeCatIds = new Set(INITIAL_ITEMS.map((i) => i.categoryId));
+    return INITIAL_CATEGORIES.filter((c) => activeCatIds.has(c._id));
   });
 
   const [orders, setOrders] = useState(INITIAL_ORDERS);
@@ -36,7 +36,6 @@ export const AppProvider = ({ children }) => {
 
         const updated = { ...order, status: newStatus };
 
-        // If completed or delivered, mark endTime and duration
         if (newStatus === 'completed' || newStatus === 'delivered') {
           if (!updated.endTime) {
             updated.endTime = new Date().toISOString();
@@ -99,8 +98,7 @@ export const AppProvider = ({ children }) => {
 
   /**
    * Simulate a new incoming customer order from the Web Menu
-   * Sequence resets based on day (Order #1 on day's first order)
-   * Full order ID combines daily sequence and date for guaranteed uniqueness.
+   * Strictly incremental order number (Order #1, #2, #3, #4...)
    */
   const simulateIncomingOrder = () => {
     const randomItemsPool = [
@@ -140,20 +138,18 @@ export const AppProvider = ({ children }) => {
     const names = ['Kavita Rao', 'Siddharth Sen', 'Divya Menon', 'Rahul Kapoor', 'Tanya Bansal'];
     const selectedName = names[Math.floor(Math.random() * names.length)];
 
-    // Calculate daily order sequence
+    // Strictly incremental order sequence
+    const maxDailyNo = orders.reduce((max, o) => Math.max(max, o.dailyOrderNo || 0), 0);
+    const nextDailyNo = maxDailyNo + 1;
     const todayIso = new Date().toISOString().slice(0, 10);
     const todayKey = todayIso.replace(/-/g, '');
-    const todaysOrders = orders.filter(
-      (o) => (o.orderDate || '').replace(/-/g, '') === todayKey
-    );
-    const nextDailyNo = todaysOrders.length + 1;
-    const uniqueOrderNo = `ORD-${todayKey}-#${nextDailyNo}`;
+    const uniqueOrderNo = `ORD-${todayKey}-${nextDailyNo}`;
 
     const newOrder = {
       _id: `ord-${Date.now()}`,
-      dailyOrderNo: nextDailyNo, // Day-based sequence (Order #1, #2...)
+      dailyOrderNo: nextDailyNo, // Strictly incremental order number
       orderDate: todayIso,
-      orderNo: uniqueOrderNo,   // Combined unique date + daily order ID
+      orderNo: uniqueOrderNo,   // Unique date + incremental sequence
       customerName: selectedName,
       phone: `+91 9${Math.floor(100000000 + Math.random() * 900000000)}`,
       table: Math.random() > 0.5 ? `Table ${Math.floor(Math.random() * 6) + 1}` : 'Takeaway',
@@ -172,16 +168,37 @@ export const AppProvider = ({ children }) => {
     return newOrder;
   };
 
-  // --- MENU ITEM ACTIONS ---
+  // --- MENU ITEM & CATEGORY ACTIONS ---
 
   /**
-   * Add a new cake/item to the menu
-   * Auto-prunes any unused categories
+   * Add a new cake/item to the menu.
+   * If newCategoryName is provided, the category is created and linked to this item.
+   * A category only exists if it has at least one item assigned; otherwise it is removed.
    */
-  const addItem = (itemData) => {
+  const addItem = (itemData, newCategoryName = null) => {
+    let targetCatId = itemData.categoryId;
+    let updatedCategories = [...categories];
+
+    if (newCategoryName && newCategoryName.trim()) {
+      const trimmed = newCategoryName.trim();
+      let existing = updatedCategories.find(
+        (c) => c.name.toLowerCase() === trimmed.toLowerCase()
+      );
+      if (!existing) {
+        existing = {
+          _id: `cat-${Date.now()}`,
+          name: trimmed,
+          icon: 'gift',
+          position: updatedCategories.length + 1,
+        };
+        updatedCategories.push(existing);
+      }
+      targetCatId = existing._id;
+    }
+
     const newItem = {
       _id: `item-${Date.now()}`,
-      categoryId: itemData.categoryId || (categories[0] ? categories[0]._id : 'cat-1'),
+      categoryId: targetCatId,
       name: itemData.name,
       description: itemData.description || '',
       price: Number(itemData.price) || 0,
@@ -192,43 +209,60 @@ export const AppProvider = ({ children }) => {
       timing: [],
     };
 
-    setItems((prevItems) => {
-      const updated = [newItem, ...prevItems];
-      // Keep only categories that have at least one item
-      const activeCatIds = new Set(updated.map((i) => i.categoryId));
-      setCategories((prevCats) => prevCats.filter((cat) => activeCatIds.has(cat._id)));
-      return updated;
-    });
+    const updatedItems = [newItem, ...items];
+    setItems(updatedItems);
+
+    // Keep ONLY categories that have at least one item assigned
+    const activeCatIds = new Set(updatedItems.map((i) => i.categoryId));
+    setCategories(updatedCategories.filter((cat) => activeCatIds.has(cat._id)));
   };
 
   /**
-   * Update an existing menu item
-   * Auto-prunes categories if an item's category changed and previous category becomes empty
+   * Update an existing menu item.
+   * If the item's category changes and its old category now has 0 items, that category is removed.
    */
-  const updateItem = (itemId, updatedFields) => {
-    setItems((prevItems) => {
-      const updated = prevItems.map((it) =>
-        it._id === itemId ? { ...it, ...updatedFields } : it
+  const updateItem = (itemId, updatedFields, newCategoryName = null) => {
+    let targetCatId = updatedFields.categoryId;
+    let updatedCategories = [...categories];
+
+    if (newCategoryName && newCategoryName.trim()) {
+      const trimmed = newCategoryName.trim();
+      let existing = updatedCategories.find(
+        (c) => c.name.toLowerCase() === trimmed.toLowerCase()
       );
-      // Auto-prune empty categories
-      const activeCatIds = new Set(updated.map((i) => i.categoryId));
-      setCategories((prevCats) => prevCats.filter((cat) => activeCatIds.has(cat._id)));
-      return updated;
-    });
+      if (!existing) {
+        existing = {
+          _id: `cat-${Date.now()}`,
+          name: trimmed,
+          icon: 'gift',
+          position: updatedCategories.length + 1,
+        };
+        updatedCategories.push(existing);
+      }
+      targetCatId = existing._id;
+    }
+
+    const updatedItems = items.map((it) =>
+      it._id === itemId ? { ...it, ...updatedFields, categoryId: targetCatId } : it
+    );
+    setItems(updatedItems);
+
+    // Keep ONLY categories that have at least one item assigned
+    const activeCatIds = new Set(updatedItems.map((i) => i.categoryId));
+    setCategories(updatedCategories.filter((cat) => activeCatIds.has(cat._id)));
   };
 
   /**
-   * Delete an item from the menu
-   * If a category no longer has any items, automatically removes that category!
+   * Delete an item from the menu.
+   * If its category now has 0 items linked, that category is automatically removed.
    */
   const deleteItem = (itemId) => {
-    setItems((prevItems) => {
-      const updated = prevItems.filter((it) => it._id !== itemId);
-      // Auto-prune: Remove any category that now has 0 items
-      const activeCatIds = new Set(updated.map((i) => i.categoryId));
-      setCategories((prevCats) => prevCats.filter((cat) => activeCatIds.has(cat._id)));
-      return updated;
-    });
+    const updatedItems = items.filter((it) => it._id !== itemId);
+    setItems(updatedItems);
+
+    // Keep ONLY categories that have at least one item assigned
+    const activeCatIds = new Set(updatedItems.map((i) => i.categoryId));
+    setCategories((prevCats) => prevCats.filter((cat) => activeCatIds.has(cat._id)));
   };
 
   /**
@@ -240,41 +274,6 @@ export const AppProvider = ({ children }) => {
         it._id === itemId ? { ...it, available: !it.available } : it
       )
     );
-  };
-
-  /**
-   * Add a new category
-   */
-  const addCategory = (name, icon = 'gift') => {
-    const trimmed = name ? name.trim() : '';
-    if (!trimmed) return null;
-
-    const existing = categories.find(
-      (c) => c.name.toLowerCase() === trimmed.toLowerCase()
-    );
-    if (existing) {
-      return existing;
-    }
-
-    const newCat = {
-      _id: `cat-${Date.now()}`,
-      name: trimmed,
-      icon,
-      position: categories.length + 1,
-    };
-
-    setCategories((prev) => [...prev, newCat]);
-    return newCat;
-  };
-
-  /**
-   * Clean up any categories that have 0 items
-   */
-  const cleanupEmptyCategories = () => {
-    setCategories((prevCats) => {
-      const activeCatIds = new Set(items.map((i) => i.categoryId));
-      return prevCats.filter((cat) => activeCatIds.has(cat._id));
-    });
   };
 
   // --- COMPUTED ANALYTICS ---
@@ -330,8 +329,6 @@ export const AppProvider = ({ children }) => {
     updateItem,
     deleteItem,
     toggleItemAvailability,
-    addCategory,
-    cleanupEmptyCategories,
     stats,
   };
 

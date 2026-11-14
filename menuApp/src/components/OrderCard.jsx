@@ -12,7 +12,7 @@ import { StatusBadge } from './StatusBadge';
 import { useApp } from '../context/AppContext';
 
 export const OrderCard = ({ order, onPress }) => {
-  const { updateOrderStatus, revertOrderStatus, cancelOrder } = useApp();
+  const { updateOrderStatus, cancelOrder } = useApp();
 
   const getElapsedTime = (isoString) => {
     const diffMs = Date.now() - new Date(isoString).getTime();
@@ -23,17 +23,6 @@ export const OrderCard = ({ order, onPress }) => {
     return `${hours}h ago`;
   };
 
-  // Revert button text based on current status
-  const getRevertLabel = () => {
-    if (order.status === 'cooking') return 'Pending';
-    if (order.status === 'completed') return 'Cooking';
-    if (order.status === 'delivered') return 'Ready';
-    if (order.status === 'cancelled') return 'Reopen';
-    return null;
-  };
-
-  const revertTarget = getRevertLabel();
-
   return (
     <TouchableOpacity
       style={styles.card}
@@ -43,13 +32,13 @@ export const OrderCard = ({ order, onPress }) => {
       {/* Top Header */}
       <View style={styles.cardHeader}>
         <View style={styles.orderIdent}>
-          {/* Prominent Day-Based Order Badge */}
+          {/* Prominent Incremental Day-Based Order Badge */}
           <View style={styles.dailyBadge}>
             <Text style={styles.dailyBadgeText}>
               Order #{order.dailyOrderNo || '1'}
             </Text>
           </View>
-          {/* Unique date-based order code */}
+          {/* Unique order code */}
           <Text style={styles.orderNo}>{order.orderNo}</Text>
         </View>
 
@@ -106,22 +95,7 @@ export const OrderCard = ({ order, onPress }) => {
         </View>
 
         <View style={styles.buttonsGroup}>
-          {/* Optional Revert Button for all non-pending statuses */}
-          {revertTarget && (
-            <TouchableOpacity
-              style={styles.btnRevert}
-              onPress={(e) => {
-                e.stopPropagation();
-                revertOrderStatus(order._id);
-              }}
-              activeOpacity={0.75}
-            >
-              <Ionicons name="arrow-undo" size={13} color={COLORS.textSecondary} />
-              <Text style={styles.btnRevertText}>↩ to {revertTarget}</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Forward status progression buttons */}
+          {/* Only forward progression buttons on card. Revert is inside the detail modal */}
           {order.status === 'pending' && (
             <>
               <TouchableOpacity
@@ -352,22 +326,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-  },
-  btnRevert: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surfaceAlt,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    gap: 4,
-  },
-  btnRevertText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
   },
   btnReject: {
     flexDirection: 'row',
