@@ -187,6 +187,13 @@ export const CreateOrderModal = ({ visible, onClose }) => {
       return;
     }
 
+    if (dateType === 'custom' && customDate < getTodayDateString()) {
+      const msg = 'Previous dates cannot be selected. Please choose today or a future date.';
+      if (Platform.OS === 'web') window.alert(msg);
+      else Alert.alert('Invalid Date', msg);
+      return;
+    }
+
     const resolvedDate =
       dateType === 'today'
         ? 'Today'
@@ -194,12 +201,17 @@ export const CreateOrderModal = ({ visible, onClose }) => {
         ? 'Tomorrow'
         : customDate || 'Today';
 
+    const resolvedTime =
+      dateType !== 'today' && orderTime.includes('ASAP')
+        ? '04:00 PM'
+        : orderTime.trim() || 'ASAP';
+
     const payload = {
       name: customerName.trim(),
       customerName: customerName.trim(),
       phone: `+91 ${phone.trim()}`,
       date: resolvedDate,
-      time: orderTime.trim() || 'ASAP',
+      time: resolvedTime,
       table: 'Takeaway',
       notes: notes.trim(),
       items: selectedItems.map((i) => ({
@@ -310,7 +322,12 @@ export const CreateOrderModal = ({ visible, onClose }) => {
                       <TouchableOpacity
                         key={d.key}
                         style={[styles.datePill, isSelected && styles.datePillActive]}
-                        onPress={() => setDateType(d.key)}
+                        onPress={() => {
+                          setDateType(d.key);
+                          if (d.key !== 'today' && orderTime.includes('ASAP')) {
+                            setOrderTime('04:00 PM');
+                          }
+                        }}
                       >
                         <Text
                           style={[
@@ -331,14 +348,24 @@ export const CreateOrderModal = ({ visible, onClose }) => {
                     placeholder="YYYY-MM-DD (e.g. 2026-11-20)"
                     placeholderTextColor={COLORS.textLight}
                     value={customDate}
-                    onChangeText={setCustomDate}
+                    onChangeText={(val) => {
+                      if (val && val.length === 10 && val < getTodayDateString()) {
+                        Alert.alert('Invalid Date', 'Previous dates cannot be selected.');
+                        setCustomDate(getTodayDateString());
+                      } else {
+                        setCustomDate(val);
+                      }
+                    }}
                   />
                 )}
 
                 {/* Time Selection */}
                 <Text style={[styles.inputLabel, { marginTop: 10 }]}>Pickup / Delivery Time *</Text>
                 <View style={styles.timePillRow}>
-                  {['ASAP (~30m)', '04:00 PM', '06:00 PM', '08:00 PM'].map((tSlot) => {
+                  {(dateType === 'today'
+                    ? ['ASAP (~30m)', '04:00 PM', '06:00 PM', '08:00 PM']
+                    : ['10:00 AM', '02:00 PM', '04:00 PM', '06:00 PM', '08:00 PM']
+                  ).map((tSlot) => {
                     const isSelected = orderTime === tSlot;
                     return (
                       <TouchableOpacity
