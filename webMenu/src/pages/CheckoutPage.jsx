@@ -306,139 +306,89 @@ export const CheckoutPage = () => {
               )}
             </div>
 
-            {/* Order Date & Time Selection (Premium Experience) */}
-            <div className="space-y-4 pt-2 border-t border-gray-100">
-              {/* Date Section */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4 text-amber-600" />
-                    <span>Select Order Date *</span>
-                  </label>
-                  <span className="text-[11px] font-bold text-amber-800 bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-200">
-                    {getResolvedDateLabel()}
-                  </span>
-                </div>
+            {/* Delivery / Pickup Schedule (Date & Time Together) */}
+            <div className="bg-amber-50/50 rounded-2xl p-4 border border-amber-200/80 space-y-3.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-amber-600" />
+                  <span>Delivery / Pickup Schedule *</span>
+                </span>
+                <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200">
+                  {getResolvedDateLabel()} • {effectiveTime}
+                </span>
+              </div>
 
-                {/* 3 Premium Date Cards */}
-                <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
-                  {/* Today Card */}
+              {/* 1. Date Selector Pills */}
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
+                  1. Choose Date
+                </label>
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => setDateType("today")}
-                    className={`p-3 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between ${
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all text-center ${
                       dateType === "today"
-                        ? "bg-gradient-to-br from-amber-600 to-amber-700 text-white border-amber-600 shadow-md ring-2 ring-amber-500/20"
-                        : "bg-white hover:bg-amber-50/50 text-gray-800 border-gray-200 shadow-2xs"
+                        ? "bg-amber-600 text-white border-amber-600 shadow-sm font-black"
+                        : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black">Today</span>
-                      <Zap className={`w-3.5 h-3.5 ${dateType === "today" ? "text-amber-200" : "text-amber-600"}`} />
-                    </div>
-                    <p className={`text-[11px] mt-1 font-semibold ${dateType === "today" ? "text-amber-100" : "text-gray-500"}`}>
-                      {formatDisplayDate(todayStr)}
-                    </p>
-                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md mt-2 inline-block w-fit ${
-                      dateType === "today" ? "bg-white/20 text-white" : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                    }`}>
-                      ASAP Available
-                    </span>
+                    Today
                   </button>
-
-                  {/* Tomorrow Card */}
                   <button
                     type="button"
                     onClick={() => setDateType("tomorrow")}
-                    className={`p-3 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between ${
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all text-center ${
                       dateType === "tomorrow"
-                        ? "bg-gradient-to-br from-amber-600 to-amber-700 text-white border-amber-600 shadow-md ring-2 ring-amber-500/20"
-                        : "bg-white hover:bg-amber-50/50 text-gray-800 border-gray-200 shadow-2xs"
+                        ? "bg-amber-600 text-white border-amber-600 shadow-sm font-black"
+                        : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black">Tomorrow</span>
-                      <Sun className={`w-3.5 h-3.5 ${dateType === "tomorrow" ? "text-amber-200" : "text-amber-600"}`} />
-                    </div>
-                    <p className={`text-[11px] mt-1 font-semibold ${dateType === "tomorrow" ? "text-amber-100" : "text-gray-500"}`}>
-                      {formatDisplayDate(tomorrowStr)}
-                    </p>
-                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md mt-2 inline-block w-fit ${
-                      dateType === "tomorrow" ? "bg-white/20 text-white" : "bg-amber-50 text-amber-800 border border-amber-200"
-                    }`}>
-                      Scheduled Bake
-                    </span>
+                    Tomorrow
                   </button>
-
-                  {/* Custom Pick Date Card */}
                   <button
                     type="button"
                     onClick={() => setDateType("custom")}
-                    className={`p-3 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between ${
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all text-center ${
                       dateType === "custom"
-                        ? "bg-gradient-to-br from-amber-600 to-amber-700 text-white border-amber-600 shadow-md ring-2 ring-amber-500/20"
-                        : "bg-white hover:bg-amber-50/50 text-gray-800 border-gray-200 shadow-2xs"
+                        ? "bg-amber-600 text-white border-amber-600 shadow-sm font-black"
+                        : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black">Pick Date</span>
-                      <CalendarDays className={`w-3.5 h-3.5 ${dateType === "custom" ? "text-amber-200" : "text-amber-600"}`} />
-                    </div>
-                    <p className={`text-[11px] mt-1 font-semibold line-clamp-1 ${dateType === "custom" ? "text-amber-100" : "text-gray-500"}`}>
-                      {dateType === "custom" && customDate ? formatDisplayDate(customDate) : "Calendar"}
-                    </p>
-                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md mt-2 inline-block w-fit ${
-                      dateType === "custom" ? "bg-white/20 text-white" : "bg-blue-50 text-blue-700 border border-blue-200"
-                    }`}>
-                      Advance Order
-                    </span>
+                    Pick Date 📅
                   </button>
                 </div>
 
-                {/* Calendar Input when Pick Date is selected */}
+                {/* Calendar picker if custom date */}
                 {dateType === "custom" && (
-                  <div className="mt-2.5 p-3 bg-white rounded-2xl border border-amber-200 shadow-sm animate-in fade-in duration-150">
-                    <label className="text-[11px] font-bold text-gray-600 block mb-1">
-                      Choose Future Date (Past dates are strictly disabled):
-                    </label>
+                  <div className="mt-2">
                     <input
                       type="date"
                       min={todayStr}
                       value={customDate}
                       onChange={(e) => handleCustomDateChange(e.target.value)}
-                      className="w-full text-xs bg-amber-50/40 border border-amber-200 rounded-xl px-3.5 py-2.5 text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
+                      className="w-full text-xs bg-white border border-amber-300 rounded-xl px-3 py-2 text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
                     />
-                    <p className="text-[10px] text-amber-800 font-medium mt-1.5 flex items-center gap-1">
-                      <span>✓</span>
-                      <span>Selected Date: <strong>{formatDisplayDate(customDate)}</strong></span>
-                    </p>
                   </div>
                 )}
               </div>
 
-              {/* Pickup / Delivery Time Section */}
-              <div className="pt-2 border-t border-gray-100">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-amber-600" />
-                    <span>Pickup / Delivery Time *</span>
-                  </label>
-                  <span className="text-[11px] font-black text-amber-800 bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-200">
-                    {effectiveTime}
-                  </span>
-                </div>
+              {/* 2. Time Selector (Directly together with Date) */}
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
+                  2. Choose Time
+                </label>
 
-                {/* Conditional Time Picker based on Date */}
                 {isToday ? (
-                  /* Date is TODAY: Customer can choose ASAP (~30m) OR Scroll Alarm Clock */
-                  <div className="space-y-3">
+                  /* If Today: can pick ASAP or Scheduled Time */
+                  <div className="space-y-2.5">
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => setTimeMode("asap")}
-                        className={`py-2.5 px-3 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-1.5 shadow-2xs ${
+                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
                           timeMode === "asap"
-                            ? "bg-amber-600 text-white border-amber-600 shadow-sm"
+                            ? "bg-amber-600 text-white border-amber-600 shadow-sm font-black"
                             : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
                         }`}
                       >
@@ -449,25 +399,18 @@ export const CheckoutPage = () => {
                       <button
                         type="button"
                         onClick={() => setTimeMode("custom")}
-                        className={`py-2.5 px-3 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-1.5 shadow-2xs ${
+                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
                           timeMode === "custom"
-                            ? "bg-amber-600 text-white border-amber-600 shadow-sm"
+                            ? "bg-amber-600 text-white border-amber-600 shadow-sm font-black"
                             : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
                         }`}
                       >
                         <Clock className="w-3.5 h-3.5" />
-                        <span>Set Exact Time</span>
+                        <span>Scheduled Time</span>
                       </button>
                     </div>
 
-                    {timeMode === "asap" ? (
-                      <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3 flex items-center gap-2.5 text-xs text-amber-900">
-                        <Zap className="w-4 h-4 text-amber-600 shrink-0" />
-                        <p className="font-medium">
-                          <strong>Fastest Preparation:</strong> Our bakery will prepare, box, and have your fresh cake ready in ~30 minutes today!
-                        </p>
-                      </div>
-                    ) : (
+                    {timeMode === "custom" && (
                       <ScrollTimePicker
                         value={wheelTime}
                         onChange={setWheelTime}
@@ -475,16 +418,8 @@ export const CheckoutPage = () => {
                     )}
                   </div>
                 ) : (
-                  /* Date is Tomorrow or Future: DO NOT PROVIDE ASAP (Strictly scroll wheel time) */
+                  /* If Tomorrow or Future: ASAP is NOT provided. Only Alarm Wheel Time Picker */
                   <div className="space-y-2">
-                    <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-2.5 flex items-center gap-2 text-xs text-amber-900">
-                      <Calendar className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                      <p className="font-semibold">
-                        Scheduled for <strong>{getResolvedDateLabel()}</strong>. Scroll the clock wheel below to set exact time:
-                      </p>
-                    </div>
-
-                    {/* Scrollable Alarm-Setter Time Picker */}
                     <ScrollTimePicker
                       value={wheelTime}
                       onChange={setWheelTime}

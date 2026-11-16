@@ -6,54 +6,59 @@ const HOURS = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11",
 const MINUTES = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"];
 const PERIODS = ["AM", "PM"];
 
-const ITEM_HEIGHT = 40; // 40px per item
-const VIEWPORT_HEIGHT = 140; // 140px total wheel height
-const PADDING_Y = (VIEWPORT_HEIGHT - ITEM_HEIGHT) / 2; // 50px top/bottom padding to center items
+const ITEM_HEIGHT = 44; // 44px per slot
+const VIEW_HEIGHT = ITEM_HEIGHT * 3; // 132px (3 items visible)
+const PADDING = ITEM_HEIGHT; // 44px top/bottom padding to center first & last item
 
-const WheelColumn = ({ items, selected, onSelect, label }) => {
+const WheelColumn = ({ items, value, onChange, label, width = "w-16" }) => {
   const containerRef = useRef(null);
-  const isUserScrolling = useRef(false);
-  const scrollTimeout = useRef(null);
+  const isScrollingRef = useRef(false);
+  const scrollDebounceRef = useRef(null);
 
-  const selectedIndex = items.indexOf(selected) !== -1 ? items.indexOf(selected) : 0;
+  const selectedIndex = items.indexOf(value) !== -1 ? items.indexOf(value) : 0;
 
-  // Scroll to selected item smoothly when selected changes from outside
+  // Sync scroll position when value changes from outside (not while user is dragging)
   useEffect(() => {
-    if (!isUserScrolling.current && containerRef.current) {
-      containerRef.current.scrollTo({
-        top: selectedIndex * ITEM_HEIGHT,
-        behavior: "smooth",
-      });
+    if (!isScrollingRef.current && containerRef.current) {
+      containerRef.current.scrollTop = selectedIndex * ITEM_HEIGHT;
     }
   }, [selectedIndex]);
 
-  // Handle manual scroll
   const handleScroll = (e) => {
-    isUserScrolling.current = true;
-    if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+    isScrollingRef.current = true;
+    if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
 
     const scrollTop = e.target.scrollTop;
-    const index = Math.max(0, Math.min(items.length - 1, Math.round(scrollTop / ITEM_HEIGHT)));
 
-    if (items[index] && items[index] !== selected) {
-      onSelect(items[index]);
-    }
-
-    scrollTimeout.current = setTimeout(() => {
-      isUserScrolling.current = false;
-      // Snap to exact center
+    // Settle on scroll stop (80ms debounce) to avoid re-rendering parent mid-gesture
+    scrollDebounceRef.current = setTimeout(() => {
+      isScrollingRef.current = false;
+      const index = Math.max(0, Math.min(items.length - 1, Math.round(scrollTop / ITEM_HEIGHT)));
+      if (items[index] && items[index] !== value) {
+        onChange(items[index]);
+      }
       if (containerRef.current) {
         containerRef.current.scrollTo({
           top: index * ITEM_HEIGHT,
           behavior: "smooth",
         });
       }
-    }, 150);
+    }, 80);
+  };
+
+  const handleItemClick = (idx, itemVal) => {
+    onChange(itemVal);
+    if (containerRef.current) {
+      containerRef.current.scrollTo({
+        top: idx * ITEM_HEIGHT,
+        behavior: "smooth",
+      });
+    }
   };
 
   const handleStep = (delta) => {
     const nextIdx = Math.max(0, Math.min(items.length - 1, selectedIndex + delta));
-    onSelect(items[nextIdx]);
+    onChange(items[nextIdx]);
     if (containerRef.current) {
       containerRef.current.scrollTo({
         top: nextIdx * ITEM_HEIGHT,
@@ -75,31 +80,25 @@ const WheelColumn = ({ items, selected, onSelect, label }) => {
         <ChevronUp className="w-4 h-4" />
       </button>
 
-      {/* Wheel Drum */}
+      {/* Scrollable Drum Window */}
       <div
         ref={containerRef}
         onScroll={handleScroll}
         style={{
-          height: `${VIEWPORT_HEIGHT}px`,
-          paddingTop: `${PADDING_Y}px`,
-          paddingBottom: `${PADDING_Y}px`,
+          height: `${VIEW_HEIGHT}px`,
+          paddingTop: `${PADDING}px`,
+          paddingBottom: `${PADDING}px`,
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
         }}
-        className="w-14 sm:w-16 overflow-y-auto overscroll-contain snap-y snap-mandatory scrollbar-none select-none relative"
+        className={`${width} overflow-y-auto overscroll-contain snap-y snap-mandatory select-none relative [&::-webkit-scrollbar]:hidden`}
       >
         {items.map((item, idx) => {
-          const isSelected = item === selected;
+          const isSelected = item === value;
           return (
             <div
               key={item}
-              onClick={() => {
-                onSelect(item);
-                if (containerRef.current) {
-                  containerRef.current.scrollTo({
-                    top: idx * ITEM_HEIGHT,
-                    behavior: "smooth",
-                  });
-                }
-              }}
+              onClick={() => handleItemClick(idx, item)}
               style={{ height: `${ITEM_HEIGHT}px` }}
               className={`flex items-center justify-center snap-center cursor-pointer font-bold transition-all ${
                 isSelected
@@ -128,7 +127,6 @@ const WheelColumn = ({ items, selected, onSelect, label }) => {
 };
 
 export const ScrollTimePicker = ({ value, onChange }) => {
-  // Parse incoming value like "04:30 PM"
   const parseTime = (str) => {
     if (!str || str.includes("ASAP")) {
       return { hour: "04", minute: "00", period: "PM" };
@@ -153,46 +151,42 @@ export const ScrollTimePicker = ({ value, onChange }) => {
   };
 
   return (
-    <div className="bg-gradient-to-b from-amber-50/70 via-white to-amber-50/40 rounded-2xl border border-amber-200/80 p-3 shadow-inner">
-      {/* Top Header Badge */}
-      <div className="flex items-center justify-between pb-2 mb-1 border-b border-amber-100">
-        <div className="flex items-center gap-1.5 text-xs font-black text-amber-900">
-          <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
-          <span>Scroll Alarm-Setter Clock</span>
-        </div>
-        <span className="text-xs font-black text-amber-800 bg-amber-100/90 px-2.5 py-0.5 rounded-lg border border-amber-200">
-          {hour}:{minute} {period}
-        </span>
-      </div>
-
-      {/* 3D Wheel Cylinder Area */}
+    <div className="bg-amber-50/60 rounded-2xl border border-amber-200 p-3 shadow-xs">
+      {/* 3D Drum Wheel Area */}
       <div className="relative flex items-center justify-center gap-2 sm:gap-4 py-1">
-        {/* Center Golden Highlight Strip */}
+        {/* Center Golden Selection Strip */}
         <div
-          style={{ height: `${ITEM_HEIGHT}px` }}
-          className="absolute inset-x-2 top-1/2 -translate-y-1/2 bg-amber-400/20 border-y-2 border-amber-500/60 rounded-xl pointer-events-none shadow-xs"
+          style={{ height: `${ITEM_HEIGHT}px`, top: `calc(${PADDING}px + 24px)` }}
+          className="absolute inset-x-2 bg-amber-500/15 border-y-2 border-amber-500/60 rounded-xl pointer-events-none shadow-xs"
         />
 
-        {/* Top Fade Gradient */}
-        <div className="absolute top-0 inset-x-0 h-10 bg-gradient-to-b from-white via-white/80 to-transparent pointer-events-none z-10" />
+        {/* Top Fade Gradient Mask */}
+        <div
+          style={{ top: "24px", height: `${PADDING}px` }}
+          className="absolute inset-x-0 bg-gradient-to-b from-amber-50/90 via-amber-50/60 to-transparent pointer-events-none z-10"
+        />
 
-        {/* Bottom Fade Gradient */}
-        <div className="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none z-10" />
+        {/* Bottom Fade Gradient Mask */}
+        <div
+          style={{ bottom: "24px", height: `${PADDING}px` }}
+          className="absolute inset-x-0 bg-gradient-to-t from-amber-50/90 via-amber-50/60 to-transparent pointer-events-none z-10"
+        />
 
         {/* Hour Column */}
         <div className="flex flex-col items-center">
-          <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider mb-0.5">
+          <span className="text-[10px] font-bold uppercase text-gray-400 tracking-wider mb-0.5">
             Hour
           </span>
           <WheelColumn
             items={HOURS}
-            selected={hour}
-            onSelect={(h) => update(h, minute, period)}
+            value={hour}
+            onChange={(h) => update(h, minute, period)}
             label="Hour"
+            width="w-14"
           />
         </div>
 
-        {/* Time Colon */}
+        {/* Colon Separator */}
         <div className="flex flex-col items-center justify-center pt-5">
           <span className="text-2xl font-black text-amber-700 leading-none pb-1 animate-pulse">
             :
@@ -201,33 +195,35 @@ export const ScrollTimePicker = ({ value, onChange }) => {
 
         {/* Minute Column */}
         <div className="flex flex-col items-center">
-          <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider mb-0.5">
+          <span className="text-[10px] font-bold uppercase text-gray-400 tracking-wider mb-0.5">
             Minute
           </span>
           <WheelColumn
             items={MINUTES}
-            selected={minute}
-            onSelect={(m) => update(hour, m, period)}
+            value={minute}
+            onChange={(m) => update(hour, m, period)}
             label="Minute"
+            width="w-14"
           />
         </div>
 
-        {/* AM / PM Column */}
+        {/* Period Column */}
         <div className="flex flex-col items-center ml-1 sm:ml-2">
-          <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider mb-0.5">
+          <span className="text-[10px] font-bold uppercase text-gray-400 tracking-wider mb-0.5">
             AM/PM
           </span>
           <WheelColumn
             items={PERIODS}
-            selected={period}
-            onSelect={(p) => update(hour, minute, p)}
+            value={period}
+            onChange={(p) => update(hour, minute, p)}
             label="AM/PM"
+            width="w-14"
           />
         </div>
       </div>
 
-      <p className="text-center text-[11px] text-amber-800/80 font-medium mt-1">
-        Scroll up/down or click buttons to adjust pickup/delivery time
+      <p className="text-center text-[11px] text-amber-800 font-medium mt-1">
+        Scroll wheel or click numbers to select exact time
       </p>
     </div>
   );
