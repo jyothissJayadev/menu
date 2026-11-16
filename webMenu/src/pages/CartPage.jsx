@@ -9,7 +9,11 @@ export const CartPage = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-amber-50/30 text-gray-900 pb-20">
+    <div
+      className={`min-h-screen bg-amber-50/30 text-gray-900 transition-all ${
+        cart.length > 0 ? "pb-32" : "pb-16"
+      }`}
+    >
       {/* Top Header */}
       <header className="bg-white border-b border-amber-100 shadow-sm sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -155,28 +159,34 @@ export const CartPage = () => {
                 <span className="text-amber-700 text-lg">₹{cartTotal}</span>
               </div>
             </div>
-
-            {/* Proceed to Checkout CTA */}
-            <div className="pt-2">
-              <button
-                onClick={() => navigate("/checkout")}
-                className="w-full py-4 bg-amber-600 hover:bg-amber-700 text-white font-extrabold rounded-2xl text-base shadow-lg shadow-amber-600/30 transition-all active:scale-[0.98] flex items-center justify-between px-6"
-              >
-                <div className="text-left">
-                  <p className="text-[11px] uppercase tracking-wider text-amber-200 font-bold">
-                    Next: Enter Customer Details
-                  </p>
-                  <p className="text-base font-black">Place Order • ₹{cartTotal}</p>
-                </div>
-                <div className="flex items-center gap-1 bg-white/20 px-3 py-1.5 rounded-xl font-bold text-xs">
-                  <span>Continue</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </button>
-            </div>
           </div>
         )}
       </main>
+
+      {/* Fixed Sticky Bottom Continue Bar - Always visible and pinned during scroll */}
+      {cart.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-amber-100 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] p-3 sm:p-4">
+          <div className="max-w-2xl mx-auto">
+            <button
+              onClick={() => navigate("/checkout")}
+              className="w-full py-3.5 sm:py-4 px-5 sm:px-6 bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 hover:from-amber-700 hover:to-amber-900 text-white font-extrabold rounded-2xl text-base shadow-lg shadow-amber-900/30 transition-all active:scale-[0.98] flex items-center justify-between border border-amber-400/40"
+            >
+              <div className="text-left">
+                <p className="text-[11px] uppercase tracking-wider text-amber-200 font-bold">
+                  Next: Enter Customer Details
+                </p>
+                <p className="text-base font-black">
+                  Place Order • ₹{cartTotal} <span className="text-xs font-normal text-amber-200/90 ml-1">({cartCount} {cartCount === 1 ? "cake" : "cakes"})</span>
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 bg-white text-amber-900 px-4 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm shadow-sm hover:bg-amber-50 shrink-0">
+                <span>Continue</span>
+                <ChevronRight className="w-4 h-4 text-amber-800" />
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
