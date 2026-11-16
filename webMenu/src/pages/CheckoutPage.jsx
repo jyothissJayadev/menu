@@ -1,5 +1,5 @@
 // webMenu/src/pages/CheckoutPage.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -114,7 +114,10 @@ export const CheckoutPage = () => {
     setCustomerDetails((prev) => ({ ...prev, notes: val }));
   };
 
-  // Safe handler to prevent selecting previous dates
+  const dateInputRef = useRef(null);
+  const timeSectionRef = useRef(null);
+
+  // Safe handler to prevent selecting previous dates and auto-provide time selection
   const handleCustomDateChange = (val) => {
     if (!val) return;
     if (val < todayStr) {
@@ -123,6 +126,40 @@ export const CheckoutPage = () => {
       return;
     }
     setCustomDate(val);
+    // Once date is picked, smoothly scroll and focus on time selection
+    setTimeout(() => {
+      timeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 80);
+  };
+
+  const handlePickDateClick = () => {
+    setDateType("custom");
+    // Automatically open the date picker dialog
+    setTimeout(() => {
+      try {
+        if (dateInputRef.current) {
+          if (typeof dateInputRef.current.showPicker === "function") {
+            dateInputRef.current.showPicker();
+          } else {
+            dateInputRef.current.focus();
+            dateInputRef.current.click();
+          }
+        }
+      } catch (err) {
+        dateInputRef.current?.focus();
+      }
+    }, 40);
+  };
+
+  const handleTomorrowClick = () => {
+    setDateType("tomorrow");
+    setTimeout(() => {
+      timeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 80);
+  };
+
+  const handleTodayClick = () => {
+    setDateType("today");
   };
 
   const isToday = dateType === "today";
@@ -326,7 +363,7 @@ export const CheckoutPage = () => {
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
-                    onClick={() => setDateType("today")}
+                    onClick={handleTodayClick}
                     className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all text-center ${
                       dateType === "today"
                         ? "bg-amber-600 text-white border-amber-600 shadow-sm font-black"
@@ -337,7 +374,7 @@ export const CheckoutPage = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setDateType("tomorrow")}
+                    onClick={handleTomorrowClick}
                     className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all text-center ${
                       dateType === "tomorrow"
                         ? "bg-amber-600 text-white border-amber-600 shadow-sm font-black"
@@ -348,36 +385,63 @@ export const CheckoutPage = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setDateType("custom")}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all text-center ${
+                    onClick={handlePickDateClick}
+                    className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all text-center truncate ${
                       dateType === "custom"
                         ? "bg-amber-600 text-white border-amber-600 shadow-sm font-black"
                         : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
                     }`}
                   >
-                    Pick Date 📅
+                    {dateType === "custom" && customDate ? `📅 ${formatDisplayDate(customDate)}` : "Pick Date 📅"}
                   </button>
                 </div>
 
-                {/* Calendar picker if custom date */}
+                {/* Calendar picker if custom date (Click anywhere on card or button opens picker) */}
                 {dateType === "custom" && (
-                  <div className="mt-2">
+                  <div
+                    onClick={handlePickDateClick}
+                    className="mt-2.5 p-2.5 bg-white border border-amber-300 hover:border-amber-500 rounded-xl flex items-center justify-between cursor-pointer transition-colors shadow-2xs relative"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-amber-600 shrink-0" />
+                      <div>
+                        <span className="text-[10px] text-gray-400 font-bold block uppercase tracking-wider">
+                          Picked Delivery Date
+                        </span>
+                        <span className="text-xs font-black text-amber-950">
+                          {formatDisplayDate(customDate)}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg">
+                      Change Date 📅
+                    </span>
+
+                    {/* Native date input with min={todayStr} to block past dates */}
                     <input
+                      ref={dateInputRef}
                       type="date"
                       min={todayStr}
                       value={customDate}
                       onChange={(e) => handleCustomDateChange(e.target.value)}
-                      className="w-full text-xs bg-white border border-amber-300 rounded-xl px-3 py-2 text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      title="Select date"
                     />
                   </div>
                 )}
               </div>
 
-              {/* 2. Time Selector (Directly together with Date) */}
-              <div>
-                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
-                  2. Choose Time
-                </label>
+              {/* 2. Time Selector (Directly together with Date, auto-provided on date pick) */}
+              <div ref={timeSectionRef} className="pt-2 border-t border-amber-200/60 transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                    <span>2. Select Time ({getResolvedDateLabel()})</span>
+                  </label>
+                  <span className="text-[10px] font-black text-amber-900 bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-200">
+                    {effectiveTime}
+                  </span>
+                </div>
 
                 {isToday ? (
                   /* If Today: can pick ASAP or Scheduled Time */
