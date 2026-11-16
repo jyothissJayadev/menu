@@ -36,6 +36,47 @@ const getTodayDateString = () => {
   return `${year}-${month}-${day}`;
 };
 
+const getTomorrowDateString = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getUpcomingDates = (count = 14) => {
+  const dates = [];
+  const now = new Date();
+  for (let i = 2; i <= count; i++) {
+    const d = new Date();
+    d.setDate(now.getDate() + i);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${y}-${m}-${day}`;
+    const weekday = d.toLocaleDateString('en-IN', { weekday: 'short' });
+    const formatted = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    dates.push({ dateStr, weekday, formatted });
+  }
+  return dates;
+};
+
+const formatDisplayDate = (dateStr) => {
+  if (!dateStr) return '';
+  try {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const d = new Date(year, month - 1, day);
+    return d.toLocaleDateString('en-IN', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    });
+  } catch {
+    return dateStr;
+  }
+};
+
 export const CreateOrderModal = ({ visible, onClose }) => {
   const { items, categories, createNewOrder } = useApp();
 
@@ -43,7 +84,15 @@ export const CreateOrderModal = ({ visible, onClose }) => {
   const [phone, setPhone] = useState('');
   const [dateType, setDateType] = useState('today'); // 'today' | 'tomorrow' | 'custom'
   const [customDate, setCustomDate] = useState(getTodayDateString());
-  const [orderTime, setOrderTime] = useState('ASAP (~30m)');
+
+  // Time handling:
+  // When date is 'today', can pick ASAP or Scheduled time
+  // When date is NOT 'today', ASAP is completely hidden / not available
+  const [timeMode, setTimeMode] = useState('asap'); // 'asap' | 'custom'
+  const [hour, setHour] = useState('04');
+  const [minute, setMinute] = useState('00');
+  const [period, setPeriod] = useState('PM');
+
   const [notes, setNotes] = useState('');
   const [selectedItems, setSelectedItems] = useState([]); // Array of { itemId, name, variant, qty, price }
 
@@ -58,12 +107,44 @@ export const CreateOrderModal = ({ visible, onClose }) => {
     setPhone('');
     setDateType('today');
     setCustomDate(getTodayDateString());
-    setOrderTime('ASAP (~30m)');
+    setTimeMode('asap');
+    setHour('04');
+    setMinute('00');
+    setPeriod('PM');
     setNotes('');
     setSelectedItems([]);
     setSearchItemQuery('');
     setSelectedCatFilter('all');
     setItemVariantSelections({});
+  };
+
+  const handleHourStep = (delta) => {
+    const h = parseInt(hour, 10) || 4;
+    let nextH = h + delta;
+    if (nextH > 12) nextH = 1;
+    if (nextH < 1) nextH = 12;
+    setHour(String(nextH).padStart(2, '0'));
+  };
+
+  const handleMinuteStep = (delta) => {
+    const m = parseInt(minute, 10) || 0;
+    let nextM = m + delta * 5;
+    if (nextM >= 60) nextM = 0;
+    if (nextM < 0) nextM = 55;
+    setMinute(String(nextM).padStart(2, '0'));
+  };
+
+  const togglePeriod = () => {
+    setPeriod((p) => (p === 'AM' ? 'PM' : 'AM'));
+  };
+
+  const handleQuickTime = (str) => {
+    const match = str.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (match) {
+      setHour(match[1].padStart(2, '0'));
+      setMinute(match[2]);
+      setPeriod(match[3].toUpperCase());
+    }
   };
 
   const handleClose = () => {
@@ -194,17 +275,18 @@ export const CreateOrderModal = ({ visible, onClose }) => {
       return;
     }
 
+    const isToday = dateType === 'today';
     const resolvedDate =
       dateType === 'today'
         ? 'Today'
         : dateType === 'tomorrow'
         ? 'Tomorrow'
-        : customDate || 'Today';
+        : formatDisplayDate(customDate);
 
     const resolvedTime =
-      dateType !== 'today' && orderTime.includes('ASAP')
-        ? '04:00 PM'
-        : orderTime.trim() || 'ASAP';
+      isToday && timeMode === 'asap'
+        ? 'ASAP (~30m)'
+        : `${hour}:${minute} ${period}`;
 
     const payload = {
       name: customerName.trim(),
@@ -301,21 +383,34 @@ export const CreateOrderModal = ({ visible, onClose }) => {
                 </View>
               </View>
 
-              {/* Order Date & Pickup Time (Default: Today) */}
+              {/* Order Date & Pickup Time (Unified Schedule) */}
               <View style={styles.dateTimeContainer}>
                 <View style={styles.dateTimeHeaderRow}>
-                  <Text style={styles.inputLabel}>Order Date *</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                    <Ionicons name="calendar-outline" size={14} color={COLORS.primary} />
+                    <Text style={styles.inputLabel}>Delivery / Pickup Schedule *</Text>
+                  </View>
                   <View style={styles.todayDefaultBadge}>
-                    <Text style={styles.todayDefaultText}>Default: Today</Text>
+                    <Text style={styles.todayDefaultText}>
+                      {dateType === 'today'
+                        ? `Today • ${timeMode === 'asap' ? 'ASAP' : `${hour}:${minute} ${period}`}`
+                        : dateType === 'tomorrow'
+                        ? `Tomorrow • ${hour}:${minute} ${period}`
+                        : `${formatDisplayDate(customDate)} • ${hour}:${minute} ${period}`}
+                    </Text>
                   </View>
                 </View>
 
-                {/* Quick Date Pills */}
+                {/* 1. Date Pills */}
+                <Text style={styles.subStepLabel}>1. Choose Date</Text>
                 <View style={styles.datePillRow}>
                   {[
                     { key: 'today', label: 'Today' },
                     { key: 'tomorrow', label: 'Tomorrow' },
-                    { key: 'custom', label: 'Pick Date 📅' },
+                    {
+                      key: 'custom',
+                      label: dateType === 'custom' && customDate ? `📅 ${formatDisplayDate(customDate)}` : 'Pick Date 📅',
+                    },
                   ].map((d) => {
                     const isSelected = dateType === d.key;
                     return (
@@ -324,8 +419,8 @@ export const CreateOrderModal = ({ visible, onClose }) => {
                         style={[styles.datePill, isSelected && styles.datePillActive]}
                         onPress={() => {
                           setDateType(d.key);
-                          if (d.key !== 'today' && orderTime.includes('ASAP')) {
-                            setOrderTime('04:00 PM');
+                          if (d.key !== 'today') {
+                            setTimeMode('custom');
                           }
                         }}
                       >
@@ -334,6 +429,7 @@ export const CreateOrderModal = ({ visible, onClose }) => {
                             styles.datePillText,
                             isSelected && styles.datePillTextActive,
                           ]}
+                          numberOfLines={1}
                         >
                           {d.label}
                         </Text>
@@ -342,56 +438,234 @@ export const CreateOrderModal = ({ visible, onClose }) => {
                   })}
                 </View>
 
+                {/* Upcoming 14 Days Scroll when Pick Date is active */}
                 {dateType === 'custom' && (
-                  <TextInput
-                    style={[styles.textInput, { marginTop: 6 }]}
-                    placeholder="YYYY-MM-DD (e.g. 2026-11-20)"
-                    placeholderTextColor={COLORS.textLight}
-                    value={customDate}
-                    onChangeText={(val) => {
-                      if (val && val.length === 10 && val < getTodayDateString()) {
-                        Alert.alert('Invalid Date', 'Previous dates cannot be selected.');
-                        setCustomDate(getTodayDateString());
-                      } else {
-                        setCustomDate(val);
-                      }
-                    }}
-                  />
+                  <View style={styles.upcomingDatesBox}>
+                    <Text style={styles.upcomingDatesTitle}>
+                      Upcoming Days (Previous dates blocked):
+                    </Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.upcomingDatesScroll}
+                    >
+                      {getUpcomingDates(14).map((d) => {
+                        const isSelected = customDate === d.dateStr;
+                        return (
+                          <TouchableOpacity
+                            key={d.dateStr}
+                            style={[
+                              styles.upcomingDateChip,
+                              isSelected && styles.upcomingDateChipActive,
+                            ]}
+                            onPress={() => {
+                              setCustomDate(d.dateStr);
+                              setTimeMode('custom');
+                            }}
+                          >
+                            <Text
+                              style={[
+                                styles.upcomingDateWeekday,
+                                isSelected && styles.upcomingDateTextActive,
+                              ]}
+                            >
+                              {d.weekday}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.upcomingDateText,
+                                isSelected && styles.upcomingDateTextActive,
+                              ]}
+                            >
+                              {d.formatted}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
                 )}
 
-                {/* Time Selection */}
-                <Text style={[styles.inputLabel, { marginTop: 10 }]}>Pickup / Delivery Time *</Text>
-                <View style={styles.timePillRow}>
-                  {(dateType === 'today'
-                    ? ['ASAP (~30m)', '04:00 PM', '06:00 PM', '08:00 PM']
-                    : ['10:00 AM', '02:00 PM', '04:00 PM', '06:00 PM', '08:00 PM']
-                  ).map((tSlot) => {
-                    const isSelected = orderTime === tSlot;
-                    return (
+                {/* 2. Time Selection (Auto provided together with Date) */}
+                <Text style={[styles.subStepLabel, { marginTop: 10 }]}>2. Choose Time</Text>
+                {dateType === 'today' ? (
+                  /* Today: Can toggle ASAP or Set Exact Time */
+                  <View style={{ gap: 8 }}>
+                    <View style={styles.timeModeRow}>
                       <TouchableOpacity
-                        key={tSlot}
-                        style={[styles.timePill, isSelected && styles.timePillActive]}
-                        onPress={() => setOrderTime(tSlot)}
+                        style={[styles.timeModeBtn, timeMode === 'asap' && styles.timeModeBtnActive]}
+                        onPress={() => setTimeMode('asap')}
                       >
+                        <Ionicons
+                          name="flash"
+                          size={13}
+                          color={timeMode === 'asap' ? '#FFF' : COLORS.primary}
+                        />
                         <Text
                           style={[
-                            styles.timePillText,
-                            isSelected && styles.timePillTextActive,
+                            styles.timeModeBtnText,
+                            timeMode === 'asap' && styles.timeModeBtnTextActive,
                           ]}
                         >
-                          {tSlot}
+                          ASAP (~30m)
                         </Text>
                       </TouchableOpacity>
-                    );
-                  })}
-                </View>
-                <TextInput
-                  style={[styles.textInput, { marginTop: 6, fontSize: 12, paddingVertical: 6 }]}
-                  placeholder="Or custom time (e.g. 5:30 PM)"
-                  placeholderTextColor={COLORS.textLight}
-                  value={orderTime}
-                  onChangeText={setOrderTime}
-                />
+
+                      <TouchableOpacity
+                        style={[styles.timeModeBtn, timeMode === 'custom' && styles.timeModeBtnActive]}
+                        onPress={() => setTimeMode('custom')}
+                      >
+                        <Ionicons
+                          name="time-outline"
+                          size={13}
+                          color={timeMode === 'custom' ? '#FFF' : COLORS.textPrimary}
+                        />
+                        <Text
+                          style={[
+                            styles.timeModeBtnText,
+                            timeMode === 'custom' && styles.timeModeBtnTextActive,
+                          ]}
+                        >
+                          Scheduled Time
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {timeMode === 'custom' && (
+                      <View style={styles.alarmTimeCard}>
+                        {/* Alarm Stepper */}
+                        <View style={styles.steppersRow}>
+                          {/* Hour */}
+                          <View style={styles.timeWheelCol}>
+                            <Text style={styles.wheelLabel}>Hour</Text>
+                            <View style={styles.unitStepper}>
+                              <TouchableOpacity style={styles.unitBtn} onPress={() => handleHourStep(-1)}>
+                                <Ionicons name="remove" size={13} color={COLORS.primaryDark} />
+                              </TouchableOpacity>
+                              <Text style={styles.unitValue}>{hour}</Text>
+                              <TouchableOpacity style={styles.unitBtn} onPress={() => handleHourStep(1)}>
+                                <Ionicons name="add" size={13} color={COLORS.primaryDark} />
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+
+                          <Text style={styles.timeColon}>:</Text>
+
+                          {/* Minute */}
+                          <View style={styles.timeWheelCol}>
+                            <Text style={styles.wheelLabel}>Minute</Text>
+                            <View style={styles.unitStepper}>
+                              <TouchableOpacity style={styles.unitBtn} onPress={() => handleMinuteStep(-1)}>
+                                <Ionicons name="remove" size={13} color={COLORS.primaryDark} />
+                              </TouchableOpacity>
+                              <Text style={styles.unitValue}>{minute}</Text>
+                              <TouchableOpacity style={styles.unitBtn} onPress={() => handleMinuteStep(1)}>
+                                <Ionicons name="add" size={13} color={COLORS.primaryDark} />
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+
+                          {/* Period */}
+                          <View style={styles.timeWheelCol}>
+                            <Text style={styles.wheelLabel}>AM / PM</Text>
+                            <TouchableOpacity style={styles.periodToggleBtn} onPress={togglePeriod}>
+                              <Text style={styles.periodText}>{period}</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+
+                        {/* Quick Chips */}
+                        <View style={styles.quickTimeRow}>
+                          {['10:00 AM', '01:00 PM', '04:00 PM', '06:30 PM', '08:00 PM'].map((qTime) => {
+                            const isQSelected = `${hour}:${minute} ${period}` === qTime;
+                            return (
+                              <TouchableOpacity
+                                key={qTime}
+                                style={[styles.quickTimeChip, isQSelected && styles.quickTimeChipActive]}
+                                onPress={() => handleQuickTime(qTime)}
+                              >
+                                <Text
+                                  style={[
+                                    styles.quickTimeText,
+                                    isQSelected && styles.quickTimeTextActive,
+                                  ]}
+                                >
+                                  {qTime}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                ) : (
+                  /* Tomorrow / Future Date: ASAP is strictly hidden. Alarm Stepper is provided */
+                  <View style={styles.alarmTimeCard}>
+                    <View style={styles.steppersRow}>
+                      {/* Hour */}
+                      <View style={styles.timeWheelCol}>
+                        <Text style={styles.wheelLabel}>Hour</Text>
+                        <View style={styles.unitStepper}>
+                          <TouchableOpacity style={styles.unitBtn} onPress={() => handleHourStep(-1)}>
+                            <Ionicons name="remove" size={13} color={COLORS.primaryDark} />
+                          </TouchableOpacity>
+                          <Text style={styles.unitValue}>{hour}</Text>
+                          <TouchableOpacity style={styles.unitBtn} onPress={() => handleHourStep(1)}>
+                            <Ionicons name="add" size={13} color={COLORS.primaryDark} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+
+                      <Text style={styles.timeColon}>:</Text>
+
+                      {/* Minute */}
+                      <View style={styles.timeWheelCol}>
+                        <Text style={styles.wheelLabel}>Minute</Text>
+                        <View style={styles.unitStepper}>
+                          <TouchableOpacity style={styles.unitBtn} onPress={() => handleMinuteStep(-1)}>
+                            <Ionicons name="remove" size={13} color={COLORS.primaryDark} />
+                          </TouchableOpacity>
+                          <Text style={styles.unitValue}>{minute}</Text>
+                          <TouchableOpacity style={styles.unitBtn} onPress={() => handleMinuteStep(1)}>
+                            <Ionicons name="add" size={13} color={COLORS.primaryDark} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+
+                      {/* Period */}
+                      <View style={styles.timeWheelCol}>
+                        <Text style={styles.wheelLabel}>AM / PM</Text>
+                        <TouchableOpacity style={styles.periodToggleBtn} onPress={togglePeriod}>
+                          <Text style={styles.periodText}>{period}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Quick Chips */}
+                    <View style={styles.quickTimeRow}>
+                      {['10:00 AM', '01:00 PM', '04:00 PM', '06:30 PM', '08:00 PM'].map((qTime) => {
+                        const isQSelected = `${hour}:${minute} ${period}` === qTime;
+                        return (
+                          <TouchableOpacity
+                            key={qTime}
+                            style={[styles.quickTimeChip, isQSelected && styles.quickTimeChipActive]}
+                            onPress={() => handleQuickTime(qTime)}
+                          >
+                            <Text
+                              style={[
+                                styles.quickTimeText,
+                                isQSelected && styles.quickTimeTextActive,
+                              ]}
+                            >
+                              {qTime}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
               </View>
 
               {/* Special Note / Cake Inscription */}
@@ -831,31 +1105,181 @@ const styles = StyleSheet.create({
     color: COLORS.textWhite,
     fontWeight: '800',
   },
-  timePillRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
+  subStepLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: COLORS.textLight,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     marginBottom: 4,
   },
-  timePill: {
-    paddingHorizontal: 8,
-    paddingVertical: 5,
+  upcomingDatesBox: {
+    marginTop: 6,
+    backgroundColor: COLORS.surface,
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  upcomingDatesTitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    marginBottom: 6,
+  },
+  upcomingDatesScroll: {
+    gap: 6,
+  },
+  upcomingDateChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 8,
     backgroundColor: COLORS.surfaceAlt,
     borderWidth: 1,
     borderColor: COLORS.border,
+    alignItems: 'center',
+    minWidth: 64,
   },
-  timePillActive: {
+  upcomingDateChipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  upcomingDateWeekday: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: COLORS.textLight,
+    textTransform: 'uppercase',
+  },
+  upcomingDateText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    marginTop: 1,
+  },
+  upcomingDateTextActive: {
+    color: COLORS.textWhite,
+  },
+  timeModeRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  timeModeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  timeModeBtnActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  timeModeBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  timeModeBtnTextActive: {
+    color: COLORS.textWhite,
+    fontWeight: '800',
+  },
+  alarmTimeCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 10,
+    gap: 8,
+  },
+  steppersRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  timeWheelCol: {
+    alignItems: 'center',
+    gap: 3,
+  },
+  wheelLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: COLORS.textLight,
+    textTransform: 'uppercase',
+  },
+  unitStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surfaceAlt,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  unitBtn: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unitValue: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: COLORS.primaryDark,
+    paddingHorizontal: 8,
+  },
+  timeColon: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: COLORS.primary,
+    marginTop: 12,
+  },
+  periodToggleBtn: {
+    height: 28,
+    paddingHorizontal: 12,
     backgroundColor: '#FEF3C7',
-    borderColor: '#F59E0B',
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  timePillText: {
+  periodText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: COLORS.primaryDark,
+  },
+  quickTimeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  quickTimeChip: {
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: COLORS.surfaceAlt,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  quickTimeChipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  quickTimeText: {
     fontSize: 10,
     fontWeight: '700',
     color: COLORS.textSecondary,
   },
-  timePillTextActive: {
-    color: COLORS.primaryDark,
+  quickTimeTextActive: {
+    color: COLORS.textWhite,
     fontWeight: '800',
   },
   emptyBasketBox: {
