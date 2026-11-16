@@ -43,8 +43,10 @@ export const OrderCard = ({ order, onPress }) => {
 
         <View style={styles.headerRight}>
           <View style={styles.tablePill}>
-            <Ionicons name="location" size={10} color={COLORS.primaryDark} />
-            <Text style={styles.tablePillText}>{order.table || 'Takeaway'}</Text>
+            <Ionicons name="calendar-outline" size={10} color={COLORS.primaryDark} />
+            <Text style={styles.tablePillText}>
+              {order.date ? `${order.date}${order.time ? ` • ${order.time}` : ''}` : (order.table || 'Today')}
+            </Text>
           </View>
           <StatusBadge status={order.status} size="small" />
         </View>

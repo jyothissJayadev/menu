@@ -1,7 +1,7 @@
 // webMenu/src/pages/CheckoutPage.jsx
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Sparkles, User, Phone, MapPin, MessageSquare, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Sparkles, User, Phone, Calendar, Clock, MessageSquare, CheckCircle2 } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { createOrder } from "../api";
 
@@ -18,6 +18,14 @@ const extract10Digits = (val) => {
 
 const isValidIndianMobile = (p) => /^[6-9]\d{9}$/.test(p);
 
+const getTodayDateString = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export const CheckoutPage = () => {
   const { cart, cartTotal, cartCount, clearCart, company, customerDetails, setCustomerDetails } =
     useCart();
@@ -25,7 +33,9 @@ export const CheckoutPage = () => {
 
   const [name, setName] = useState(customerDetails.name || "");
   const [phone, setPhone] = useState(() => extract10Digits(customerDetails.phone || ""));
-  const [table, setTable] = useState(customerDetails.table || "Takeaway");
+  const [dateType, setDateType] = useState("today"); // "today" | "tomorrow" | "custom"
+  const [customDate, setCustomDate] = useState(getTodayDateString());
+  const [orderTime, setOrderTime] = useState("ASAP (~30m)");
   const [notes, setNotes] = useState(customerDetails.notes || "");
   const [isPlacing, setIsPlacing] = useState(false);
 
@@ -51,11 +61,6 @@ export const CheckoutPage = () => {
     }));
   };
 
-  const handleTableChange = (val) => {
-    setTable(val);
-    setCustomerDetails((prev) => ({ ...prev, table: val }));
-  };
-
   const handleNotesChange = (val) => {
     setNotes(val);
     setCustomerDetails((prev) => ({ ...prev, notes: val }));
@@ -79,10 +84,19 @@ export const CheckoutPage = () => {
     setIsPlacing(true);
     try {
       const companyId = company ? company._id : "6af8890bb0d5cb3fd1c686bc";
+      const resolvedDate =
+        dateType === "today"
+          ? "Today"
+          : dateType === "tomorrow"
+          ? "Tomorrow"
+          : customDate || "Today";
+
       const payload = {
         name: name.trim(),
         phone: `+91 ${phone.trim()}`,
-        table,
+        date: resolvedDate,
+        time: orderTime.trim() || "ASAP",
+        table: "Takeaway",
         notes: notes.trim(),
         items: cart.map((i) => ({
           itemId: i.originalItemId || i.id,
@@ -213,36 +227,104 @@ export const CheckoutPage = () => {
               )}
             </div>
 
-            {/* Dining / Pickup Options */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Order Date & Time Selection (Default: Today) */}
+            <div className="space-y-3 pt-1 border-t border-gray-100">
               <div>
-                <label className="text-xs font-bold text-gray-700 block mb-1 flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Dining / Pickup</span>
+                <label className="text-xs font-bold text-gray-700 block mb-1.5 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Order Date *</span>
+                  </span>
+                  <span className="text-[10px] text-amber-800 font-bold bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
+                    Default: Today
+                  </span>
                 </label>
-                <select
-                  value={table}
-                  onChange={(e) => handleTableChange(e.target.value)}
-                  className="w-full text-xs bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
-                >
-                  <option value="Takeaway">Takeaway (Counter Pickup)</option>
-                  <option value="Table 1">Table 1</option>
-                  <option value="Table 2">Table 2</option>
-                  <option value="Table 3">Table 3</option>
-                  <option value="Table 4">Table 4</option>
-                  <option value="Table 5">Table 5</option>
-                  <option value="Table 6">Table 6</option>
-                  <option value="Delivery">Pre-order Delivery</option>
-                </select>
+
+                {/* Quick Date Chips */}
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDateType("today")}
+                    className={`py-2 px-3 rounded-xl text-xs font-black border transition-all text-center ${
+                      dateType === "today"
+                        ? "bg-amber-600 text-white border-amber-600 shadow-sm"
+                        : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDateType("tomorrow")}
+                    className={`py-2 px-3 rounded-xl text-xs font-black border transition-all text-center ${
+                      dateType === "tomorrow"
+                        ? "bg-amber-600 text-white border-amber-600 shadow-sm"
+                        : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    Tomorrow
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDateType("custom")}
+                    className={`py-2 px-3 rounded-xl text-xs font-black border transition-all text-center ${
+                      dateType === "custom"
+                        ? "bg-amber-600 text-white border-amber-600 shadow-sm"
+                        : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    Pick Date 📅
+                  </button>
+                </div>
+
+                {/* Custom Date Input if selected */}
+                {dateType === "custom" && (
+                  <div className="mt-2">
+                    <input
+                      type="date"
+                      min={getTodayDateString()}
+                      value={customDate}
+                      onChange={(e) => setCustomDate(e.target.value)}
+                      className="w-full text-xs bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-gray-900 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
+                    />
+                  </div>
+                )}
               </div>
 
+              {/* Order Time */}
               <div>
-                <label className="text-xs font-bold text-gray-700 block mb-1">
-                  Estimated Ready Time
+                <label className="text-xs font-bold text-gray-700 block mb-1.5 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Pickup / Delivery Time *</span>
                 </label>
-                <div className="w-full text-xs bg-gray-100 border border-gray-200 rounded-xl px-3 py-2.5 text-gray-600 font-medium">
-                  ASAP (~20 mins)
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
+                  {["ASAP (~30m)", "04:00 PM", "06:00 PM", "08:00 PM"].map((tSlot) => {
+                    const isSelected = orderTime === tSlot;
+                    return (
+                      <button
+                        key={tSlot}
+                        type="button"
+                        onClick={() => setOrderTime(tSlot)}
+                        className={`py-1.5 px-2.5 rounded-lg text-xs font-bold border transition-all text-center ${
+                          isSelected
+                            ? "bg-amber-100 text-amber-900 border-amber-400 font-black"
+                            : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                        }`}
+                      >
+                        {tSlot}
+                      </button>
+                    );
+                  })}
                 </div>
+
+                <input
+                  type="text"
+                  placeholder="Or custom time (e.g. 5:30 PM)"
+                  value={orderTime}
+                  onChange={(e) => setOrderTime(e.target.value)}
+                  className="w-full text-xs bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white font-medium"
+                />
               </div>
             </div>
 

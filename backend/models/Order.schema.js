@@ -30,6 +30,8 @@ const OrderSchema = new mongoose.Schema(
     startTime: { type: Date, default: Date.now },
     endTime: { type: Date },
     durationMinutes: { type: Number },
+    date: { type: String, default: "Today" }, // e.g. "Today" or "2026-11-16"
+    time: { type: String, default: "ASAP" },  // e.g. "ASAP", "05:00 PM"
     table: { type: String, default: "Takeaway" },
     status: {
       type: String,

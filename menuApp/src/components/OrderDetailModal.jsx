@@ -117,8 +117,10 @@ export const OrderDetailModal = ({ order, visible, onClose }) => {
                 <Text style={styles.customerName}>{order.customerName || order.name || 'Customer'}</Text>
                 <Text style={styles.customerPhone}>{order.phone}</Text>
                 <View style={styles.tableTag}>
-                  <Ionicons name="location-outline" size={12} color={COLORS.textSecondary} />
-                  <Text style={styles.tableText}>{order.table || 'Takeaway'}</Text>
+                  <Ionicons name="calendar-outline" size={12} color={COLORS.primaryDark} />
+                  <Text style={styles.tableText}>
+                    {order.date ? `${order.date} • ${order.time || 'ASAP'}` : (order.table || 'Today')}
+                  </Text>
                 </View>
               </View>
               <TouchableOpacity style={styles.callButton} onPress={handleCall}>

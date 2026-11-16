@@ -256,6 +256,14 @@ export const OrderTrackingPage = () => {
             <span>Contact Phone</span>
             <span className="font-bold text-gray-900">{order.phone}</span>
           </div>
+          {(order.date || order.time) && (
+            <div className="flex items-center justify-between text-gray-500">
+              <span>Pickup Date & Time</span>
+              <span className="font-bold text-amber-900">
+                {order.date || "Today"} • {order.time || "ASAP"}
+              </span>
+            </div>
+          )}
           <div className="flex items-center justify-between text-gray-500">
             <span>Bakery Location</span>
             <span className="font-bold text-amber-800">Lavino Cake Studio, Cherupuzha</span>

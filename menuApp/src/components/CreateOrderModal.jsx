@@ -28,12 +28,22 @@ const extract10Digits = (val) => {
 
 const isValidIndianMobile = (p) => /^[6-9]\d{9}$/.test(p);
 
+const getTodayDateString = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export const CreateOrderModal = ({ visible, onClose }) => {
   const { items, categories, createNewOrder } = useApp();
 
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
-  const [table, setTable] = useState('Takeaway');
+  const [dateType, setDateType] = useState('today'); // 'today' | 'tomorrow' | 'custom'
+  const [customDate, setCustomDate] = useState(getTodayDateString());
+  const [orderTime, setOrderTime] = useState('ASAP (~30m)');
   const [notes, setNotes] = useState('');
   const [selectedItems, setSelectedItems] = useState([]); // Array of { itemId, name, variant, qty, price }
 
@@ -46,7 +56,9 @@ export const CreateOrderModal = ({ visible, onClose }) => {
   const resetForm = () => {
     setCustomerName('');
     setPhone('');
-    setTable('Takeaway');
+    setDateType('today');
+    setCustomDate(getTodayDateString());
+    setOrderTime('ASAP (~30m)');
     setNotes('');
     setSelectedItems([]);
     setSearchItemQuery('');
@@ -174,11 +186,20 @@ export const CreateOrderModal = ({ visible, onClose }) => {
       return;
     }
 
+    const resolvedDate =
+      dateType === 'today'
+        ? 'Today'
+        : dateType === 'tomorrow'
+        ? 'Tomorrow'
+        : customDate || 'Today';
+
     const payload = {
       name: customerName.trim(),
       customerName: customerName.trim(),
       phone: `+91 ${phone.trim()}`,
-      table: table.trim() || 'Takeaway',
+      date: resolvedDate,
+      time: orderTime.trim() || 'ASAP',
+      table: 'Takeaway',
       notes: notes.trim(),
       items: selectedItems.map((i) => ({
         itemId: i.itemId,
@@ -267,28 +288,82 @@ export const CreateOrderModal = ({ visible, onClose }) => {
                 </View>
               </View>
 
-              {/* Order Type / Table selection */}
-              <Text style={styles.inputLabel}>Dining / Order Type</Text>
-              <View style={styles.tablePillRow}>
-                {['Takeaway', 'Dine-In', 'Delivery', 'Table 1', 'Table 2'].map((opt) => {
-                  const isSelected = table === opt;
-                  return (
-                    <TouchableOpacity
-                      key={opt}
-                      style={[styles.tablePill, isSelected && styles.tablePillActive]}
-                      onPress={() => setTable(opt)}
-                    >
-                      <Text
-                        style={[
-                          styles.tablePillText,
-                          isSelected && styles.tablePillTextActive,
-                        ]}
+              {/* Order Date & Pickup Time (Default: Today) */}
+              <View style={styles.dateTimeContainer}>
+                <View style={styles.dateTimeHeaderRow}>
+                  <Text style={styles.inputLabel}>Order Date *</Text>
+                  <View style={styles.todayDefaultBadge}>
+                    <Text style={styles.todayDefaultText}>Default: Today</Text>
+                  </View>
+                </View>
+
+                {/* Quick Date Pills */}
+                <View style={styles.datePillRow}>
+                  {[
+                    { key: 'today', label: 'Today' },
+                    { key: 'tomorrow', label: 'Tomorrow' },
+                    { key: 'custom', label: 'Pick Date 📅' },
+                  ].map((d) => {
+                    const isSelected = dateType === d.key;
+                    return (
+                      <TouchableOpacity
+                        key={d.key}
+                        style={[styles.datePill, isSelected && styles.datePillActive]}
+                        onPress={() => setDateType(d.key)}
                       >
-                        {opt}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                        <Text
+                          style={[
+                            styles.datePillText,
+                            isSelected && styles.datePillTextActive,
+                          ]}
+                        >
+                          {d.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {dateType === 'custom' && (
+                  <TextInput
+                    style={[styles.textInput, { marginTop: 6 }]}
+                    placeholder="YYYY-MM-DD (e.g. 2026-11-20)"
+                    placeholderTextColor={COLORS.textLight}
+                    value={customDate}
+                    onChangeText={setCustomDate}
+                  />
+                )}
+
+                {/* Time Selection */}
+                <Text style={[styles.inputLabel, { marginTop: 10 }]}>Pickup / Delivery Time *</Text>
+                <View style={styles.timePillRow}>
+                  {['ASAP (~30m)', '04:00 PM', '06:00 PM', '08:00 PM'].map((tSlot) => {
+                    const isSelected = orderTime === tSlot;
+                    return (
+                      <TouchableOpacity
+                        key={tSlot}
+                        style={[styles.timePill, isSelected && styles.timePillActive]}
+                        onPress={() => setOrderTime(tSlot)}
+                      >
+                        <Text
+                          style={[
+                            styles.timePillText,
+                            isSelected && styles.timePillTextActive,
+                          ]}
+                        >
+                          {tSlot}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                <TextInput
+                  style={[styles.textInput, { marginTop: 6, fontSize: 12, paddingVertical: 6 }]}
+                  placeholder="Or custom time (e.g. 5:30 PM)"
+                  placeholderTextColor={COLORS.textLight}
+                  value={orderTime}
+                  onChangeText={setOrderTime}
+                />
               </View>
 
               {/* Special Note / Cake Inscription */}
@@ -673,30 +748,84 @@ const styles = StyleSheet.create({
     minHeight: 52,
     textAlignVertical: 'top',
   },
-  tablePillRow: {
+  dateTimeContainer: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+    marginBottom: 6,
+  },
+  dateTimeHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  todayDefaultBadge: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  todayDefaultText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: COLORS.primaryDark,
+  },
+  datePillRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 4,
+  },
+  datePill: {
+    flex: 1,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: COLORS.surfaceAlt,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  datePillActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  datePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+  },
+  datePillTextActive: {
+    color: COLORS.textWhite,
+    fontWeight: '800',
+  },
+  timePillRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginBottom: 6,
+    marginBottom: 4,
   },
-  tablePill: {
-    paddingHorizontal: 10,
+  timePill: {
+    paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 8,
     backgroundColor: COLORS.surfaceAlt,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  tablePillActive: {
-    backgroundColor: COLORS.primaryLight,
-    borderColor: COLORS.primary,
+  timePillActive: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#F59E0B',
   },
-  tablePillText: {
-    fontSize: 11,
-    fontWeight: '600',
+  timePillText: {
+    fontSize: 10,
+    fontWeight: '700',
     color: COLORS.textSecondary,
   },
-  tablePillTextActive: {
+  timePillTextActive: {
     color: COLORS.primaryDark,
     fontWeight: '800',
   },

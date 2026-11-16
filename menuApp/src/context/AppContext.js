@@ -242,6 +242,8 @@ export const AppProvider = ({ children }) => {
       name: orderData.name || orderData.customerName || 'In-Store Customer',
       customerName: orderData.name || orderData.customerName || 'In-Store Customer',
       phone: orderData.phone || '',
+      date: orderData.date || 'Today',
+      time: orderData.time || 'ASAP',
       table: orderData.table || 'Takeaway',
       notes: orderData.notes || '',
       items: orderData.items || [],

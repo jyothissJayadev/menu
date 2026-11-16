@@ -6,8 +6,8 @@ import { COLORS, SHADOWS } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import { PhoneNotch } from './PhoneNotch';
 
-export const Header = ({ title = 'Cake Kitchen Hub', subtitle }) => {
-  const { company, isShopOpen, setIsShopOpen, stats, simulateIncomingOrder } = useApp();
+export const Header = () => {
+  const { company, isShopOpen, setIsShopOpen, simulateIncomingOrder } = useApp();
 
   return (
     <View style={styles.headerWrapper}>
@@ -60,22 +60,6 @@ export const Header = ({ title = 'Cake Kitchen Hub', subtitle }) => {
             </View>
           </View>
         </View>
-
-        {/* Screen Title Row */}
-        {title && (
-          <View style={styles.titleRow}>
-            <Text style={styles.screenTitle}>{title}</Text>
-            {stats.pendingCount > 0 && (
-              <View style={styles.pendingBadge}>
-                <Ionicons name="notifications" size={12} color={COLORS.textWhite} />
-                <Text style={styles.pendingBadgeText}>
-                  {stats.pendingCount} New Pending
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
-        {subtitle && <Text style={styles.screenSubtitle}>{subtitle}</Text>}
       </View>
     </View>
   );
@@ -91,13 +75,13 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     paddingTop: 4,
-    paddingBottom: 12,
+    paddingBottom: 8,
   },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 0,
   },
   brandContainer: {
     flexDirection: 'row',
@@ -166,35 +150,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.textPrimary,
     marginRight: 2,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 4,
-  },
-  screenTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  screenSubtitle: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  pendingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.accent,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    gap: 4,
-  },
-  pendingBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.textWhite,
   },
 });

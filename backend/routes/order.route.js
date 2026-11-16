@@ -14,7 +14,7 @@ const router = express.Router({ mergeParams: true });
 router.post("/", async (req, res) => {
   try {
     const companyId = req.params.companyId || req.companyId;
-    const { items, table = "Takeaway", name = "Guest", phone = "", notes = "" } = req.body;
+    const { items, table = "Takeaway", name = "Guest", phone = "", notes = "", date = "Today", time = "ASAP" } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: "No items provided in order" });
@@ -100,6 +100,8 @@ router.post("/", async (req, res) => {
       table: table || "Takeaway",
       name: name || "Customer",
       phone: formattedPhone,
+      date: date || "Today",
+      time: time || "ASAP",
       notes: notes || "",
       total,
       status: "pending",
