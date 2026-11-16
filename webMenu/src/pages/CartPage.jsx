@@ -102,8 +102,8 @@ export const CartPage = () => {
                     <div className="flex items-center bg-amber-50 rounded-lg border border-amber-200">
                       <button
                         onClick={() => updateQuantity(item.id, -1)}
-                        className="w-7 h-7 flex items-center justify-center text-amber-800 hover:bg-amber-100 rounded-l"
-                        title="Decrease"
+                        className="w-7 h-7 flex items-center justify-center text-amber-800 hover:bg-amber-100 rounded-l active:scale-95"
+                        title={item.quantity === 1 ? "Deselect / Remove" : "Decrease"}
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
@@ -111,9 +111,14 @@ export const CartPage = () => {
                         {item.quantity}
                       </span>
                       <button
-                        onClick={() => updateQuantity(item.id, 1)}
-                        className="w-7 h-7 flex items-center justify-center text-amber-800 hover:bg-amber-100 rounded-r"
-                        title="Increase"
+                        onClick={() => item.quantity < 5 && updateQuantity(item.id, 1)}
+                        disabled={item.quantity >= 5}
+                        className={`w-7 h-7 flex items-center justify-center rounded-r transition-colors ${
+                          item.quantity >= 5
+                            ? "text-gray-300 cursor-not-allowed bg-amber-50/50"
+                            : "text-amber-800 hover:bg-amber-100 active:scale-95"
+                        }`}
+                        title={item.quantity >= 5 ? "Max 5 reached" : "Increase"}
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </button>

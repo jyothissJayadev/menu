@@ -115,8 +115,9 @@ export const CartProvider = ({ children }) => {
     setCart((prev) => {
       const existing = prev.find((i) => i.id === cartItemId);
       if (existing) {
+        const newQty = Math.min(5, existing.quantity + qty);
         return prev.map((i) =>
-          i.id === cartItemId ? { ...i, quantity: i.quantity + qty } : i
+          i.id === cartItemId ? { ...i, quantity: newQty } : i
         );
       }
       return [
@@ -128,7 +129,7 @@ export const CartProvider = ({ children }) => {
           selectedVariant: selectedVariant || null,
           variant: variantWeight,
           price: variantPrice,
-          quantity: qty,
+          quantity: Math.min(5, qty),
         },
       ];
     });
@@ -147,10 +148,11 @@ export const CartProvider = ({ children }) => {
       if (exactQty <= 0) {
         return prev.filter((i) => i.id !== cartItemId);
       }
+      const clampedQty = Math.min(5, exactQty);
       const existing = prev.find((i) => i.id === cartItemId);
       if (existing) {
         return prev.map((i) =>
-          i.id === cartItemId ? { ...i, quantity: exactQty } : i
+          i.id === cartItemId ? { ...i, quantity: clampedQty } : i
         );
       }
       return [
@@ -162,7 +164,7 @@ export const CartProvider = ({ children }) => {
           selectedVariant: selectedVariant || null,
           variant: variantWeight,
           price: variantPrice,
-          quantity: exactQty,
+          quantity: clampedQty,
         },
       ];
     });
@@ -174,7 +176,8 @@ export const CartProvider = ({ children }) => {
         .map((item) => {
           if (item.id === itemId) {
             const newQty = item.quantity + delta;
-            return newQty > 0 ? { ...item, quantity: newQty } : null;
+            if (newQty <= 0) return null; // Deselected/removed from cart
+            return { ...item, quantity: Math.min(5, newQty) }; // Max 5
           }
           return item;
         })

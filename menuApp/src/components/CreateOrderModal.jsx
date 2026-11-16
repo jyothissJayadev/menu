@@ -116,7 +116,7 @@ export const CreateOrderModal = ({ visible, onClose }) => {
       const existing = prev.find((i) => i.lineItemId === lineItemId);
       if (existing) {
         return prev.map((i) =>
-          i.lineItemId === lineItemId ? { ...i, qty: i.qty + 1 } : i
+          i.lineItemId === lineItemId ? { ...i, qty: Math.min(5, i.qty + 1) } : i
         );
       }
       return [
@@ -133,14 +133,15 @@ export const CreateOrderModal = ({ visible, onClose }) => {
     });
   };
 
-  // Update quantity in order basket
+  // Update quantity in order basket (deselect when reaching 0, max 5)
   const handleUpdateQty = (lineItemId, delta) => {
     setSelectedItems((prev) =>
       prev
         .map((i) => {
           if (i.lineItemId === lineItemId) {
             const newQty = i.qty + delta;
-            return newQty > 0 ? { ...i, qty: newQty } : null;
+            if (newQty <= 0) return null; // Deselected / removed from basket
+            return { ...i, qty: Math.min(5, newQty) }; // Max 5
           }
           return i;
         })
@@ -427,8 +428,9 @@ export const CreateOrderModal = ({ visible, onClose }) => {
                         </TouchableOpacity>
                         <Text style={styles.stepperQty}>{item.qty}</Text>
                         <TouchableOpacity
-                          style={styles.stepperBtn}
-                          onPress={() => handleUpdateQty(item.lineItemId, 1)}
+                          style={[styles.stepperBtn, item.qty >= 5 && { opacity: 0.3 }]}
+                          disabled={item.qty >= 5}
+                          onPress={() => item.qty < 5 && handleUpdateQty(item.lineItemId, 1)}
                         >
                           <Ionicons name="add" size={14} color={COLORS.primaryDark} />
                         </TouchableOpacity>

@@ -103,7 +103,8 @@ const MenuItemCard = ({ item, onAdd, cart, updateQuantity, onOpenDetail }) => {
                   e.stopPropagation();
                   updateQuantity(cartItemId, -1);
                 }}
-                className="w-7 h-7 flex items-center justify-center text-amber-800 hover:bg-amber-100 rounded-l"
+                className="w-7 h-7 flex items-center justify-center text-amber-800 hover:bg-amber-100 rounded-l active:scale-95"
+                title={cartItem.quantity === 1 ? "Deselect cake" : "Decrease"}
               >
                 <Minus className="w-3.5 h-3.5" />
               </button>
@@ -113,9 +114,17 @@ const MenuItemCard = ({ item, onAdd, cart, updateQuantity, onOpenDetail }) => {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  updateQuantity(cartItemId, 1);
+                  if (cartItem.quantity < 5) {
+                    updateQuantity(cartItemId, 1);
+                  }
                 }}
-                className="w-7 h-7 flex items-center justify-center text-amber-800 hover:bg-amber-100 rounded-r"
+                disabled={cartItem.quantity >= 5}
+                className={`w-7 h-7 flex items-center justify-center rounded-r transition-colors ${
+                  cartItem.quantity >= 5
+                    ? "text-gray-300 cursor-not-allowed bg-amber-50/50"
+                    : "text-amber-800 hover:bg-amber-100 active:scale-95"
+                }`}
+                title={cartItem.quantity >= 5 ? "Max 5 reached" : "Increase"}
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>

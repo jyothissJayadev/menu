@@ -4,7 +4,7 @@ import { X, Plus, Minus, ShoppingBag, Sparkles, Check } from "lucide-react";
 import { useCart } from "../context/CartContext";
 
 export const ItemDetailModal = ({ item, isOpen, onClose, categories = [] }) => {
-  const { cart, addToCart, setItemQuantity } = useCart();
+  const { cart, setItemQuantity, removeFromCart } = useCart();
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [addedAnimation, setAddedAnimation] = useState(false);
@@ -24,14 +24,24 @@ export const ItemDetailModal = ({ item, isOpen, onClose, categories = [] }) => {
 
   const existingInCart = cart.find((c) => c.id === cartItemId);
 
-  // Sync state when opened or item changed
+  // Reset variant index when modal opens with a new item
   useEffect(() => {
-    if (item) {
+    if (isOpen) {
       setSelectedVariantIndex(0);
-      setQuantity(1);
+    }
+  }, [isOpen, item?.id]);
+
+  // Sync quantity state when opened, item changed, or variant changed
+  useEffect(() => {
+    if (item && isOpen) {
+      if (existingInCart) {
+        setQuantity(existingInCart.quantity);
+      } else {
+        setQuantity(1);
+      }
       setAddedAnimation(false);
     }
-  }, [item]);
+  }, [item?.id, isOpen, selectedVariantIndex, existingInCart?.id]);
 
   // Lock body scroll when open
   useEffect(() => {
@@ -61,13 +71,30 @@ export const ItemDetailModal = ({ item, isOpen, onClose, categories = [] }) => {
   const categoryObj = categories.find((c) => String(c.id) === String(item.categoryId));
   const categoryName = categoryObj ? categoryObj.name : "Cake Special";
 
+  const handleDecrease = () => {
+    setQuantity((prev) => {
+      const next = Math.max(0, prev - 1);
+      if (next === 0 && existingInCart) {
+        removeFromCart(cartItemId);
+      }
+      return next;
+    });
+  };
+
+  const handleIncrease = () => {
+    setQuantity((prev) => Math.min(5, prev + 1));
+  };
+
   const handleAddToCart = () => {
-    if (existingInCart) {
-      // Set to new total or add
-      addToCart(item, currentVariant, quantity);
-    } else {
-      addToCart(item, currentVariant, quantity);
+    if (quantity === 0) {
+      if (existingInCart) {
+        removeFromCart(cartItemId);
+      }
+      onClose();
+      return;
     }
+
+    setItemQuantity(item, currentVariant, quantity);
 
     setAddedAnimation(true);
     setTimeout(() => {
@@ -197,29 +224,52 @@ export const ItemDetailModal = ({ item, isOpen, onClose, categories = [] }) => {
             {/* Quantity Selector Section */}
             <div className="flex items-center justify-between pt-3 border-t border-gray-100">
               <div>
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block">
-                  Quantity
-                </span>
-                <span className="text-xs text-amber-800 font-semibold">
-                  Subtotal: ₹{totalPrice}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block">
+                    Quantity
+                  </span>
+                  <span className="text-[10px] bg-amber-100 text-amber-900 font-extrabold px-1.5 py-0.5 rounded">
+                    Max 5
+                  </span>
+                </div>
+                <span className="text-xs font-semibold mt-0.5 block">
+                  {quantity === 0 ? (
+                    <span className="text-red-500 font-bold">Cake Deselected</span>
+                  ) : (
+                    <span className="text-amber-800">
+                      Subtotal: ₹{totalPrice} {quantity === 5 && <span className="text-gray-400 font-normal">(Max limit)</span>}
+                    </span>
+                  )}
                 </span>
               </div>
 
               <div className="flex items-center bg-gray-100 rounded-xl p-1 border border-gray-200">
                 <button
                   type="button"
-                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  className="w-9 h-9 rounded-lg bg-white shadow-xs flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors"
+                  onClick={handleDecrease}
+                  disabled={quantity === 0}
+                  className={`w-9 h-9 rounded-lg shadow-xs flex items-center justify-center transition-all ${
+                    quantity === 0
+                      ? "bg-gray-100 text-gray-300 cursor-not-allowed"
+                      : "bg-white text-gray-700 hover:bg-gray-50 active:scale-95"
+                  }`}
+                  title={quantity === 1 ? "Deselect cake" : "Decrease quantity"}
                 >
                   <Minus className="w-4 h-4" />
                 </button>
-                <span className="w-10 text-center font-black text-sm text-gray-900">
+                <span className={`w-10 text-center font-black text-sm ${quantity === 0 ? "text-red-500" : "text-gray-900"}`}>
                   {quantity}
                 </span>
                 <button
                   type="button"
-                  onClick={() => setQuantity((q) => q + 1)}
-                  className="w-9 h-9 rounded-lg bg-white shadow-xs flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors"
+                  onClick={handleIncrease}
+                  disabled={quantity >= 5}
+                  className={`w-9 h-9 rounded-lg shadow-xs flex items-center justify-center transition-all ${
+                    quantity >= 5
+                      ? "bg-gray-100 text-gray-300 cursor-not-allowed"
+                      : "bg-white text-gray-700 hover:bg-gray-50 active:scale-95"
+                  }`}
+                  title={quantity >= 5 ? "Maximum 5 cakes" : "Increase quantity"}
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -230,31 +280,41 @@ export const ItemDetailModal = ({ item, isOpen, onClose, categories = [] }) => {
 
         {/* Footer Add To Cart Action */}
         <div className="p-4 sm:p-5 bg-white border-t border-gray-100 shadow-lg shrink-0">
-          <button
-            type="button"
-            onClick={handleAddToCart}
-            className={`w-full py-3.5 px-6 rounded-2xl font-black text-sm flex items-center justify-between shadow-lg transition-all active:scale-[0.98] ${
-              addedAnimation
-                ? "bg-emerald-600 text-white shadow-emerald-600/30"
-                : "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/30"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              {addedAnimation ? (
-                <Check className="w-5 h-5 animate-bounce" />
-              ) : (
-                <ShoppingBag className="w-5 h-5" />
-              )}
-              <span>
-                {addedAnimation
-                  ? "Added to Cart!"
-                  : existingInCart
-                  ? `Add ${quantity} more to Cart`
-                  : `Add ${quantity} to Cart`}
-              </span>
-            </div>
-            <span className="text-base font-black">₹{totalPrice}</span>
-          </button>
+          {quantity === 0 ? (
+            <button
+              type="button"
+              disabled={true}
+              className="w-full py-3.5 px-6 rounded-2xl font-bold text-sm bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <span>Cake Deselected • Select 1 to 5 to Add</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleAddToCart}
+              className={`w-full py-3.5 px-6 rounded-2xl font-black text-sm flex items-center justify-between shadow-lg transition-all active:scale-[0.98] ${
+                addedAnimation
+                  ? "bg-emerald-600 text-white shadow-emerald-600/30"
+                  : "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/30"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {addedAnimation ? (
+                  <Check className="w-5 h-5 animate-bounce" />
+                ) : (
+                  <ShoppingBag className="w-5 h-5" />
+                )}
+                <span>
+                  {addedAnimation
+                    ? "Added to Cart!"
+                    : existingInCart
+                    ? `Update Cart (${quantity})`
+                    : `Add ${quantity} to Cart`}
+                </span>
+              </div>
+              <span className="text-base font-black">₹{totalPrice}</span>
+            </button>
+          )}
         </div>
       </div>
     </div>
