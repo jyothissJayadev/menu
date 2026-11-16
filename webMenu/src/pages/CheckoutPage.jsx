@@ -5,13 +5,26 @@ import { ArrowLeft, Sparkles, User, Phone, MapPin, MessageSquare, CheckCircle2 }
 import { useCart } from "../context/CartContext";
 import { createOrder } from "../api";
 
+const extract10Digits = (val) => {
+  if (!val) return "";
+  let digits = String(val).replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("91")) {
+    digits = digits.slice(2);
+  } else if (digits.length === 11 && digits.startsWith("0")) {
+    digits = digits.slice(1);
+  }
+  return digits.slice(0, 10);
+};
+
+const isValidIndianMobile = (p) => /^[6-9]\d{9}$/.test(p);
+
 export const CheckoutPage = () => {
   const { cart, cartTotal, cartCount, clearCart, company, customerDetails, setCustomerDetails } =
     useCart();
   const navigate = useNavigate();
 
   const [name, setName] = useState(customerDetails.name || "");
-  const [phone, setPhone] = useState(customerDetails.phone || "");
+  const [phone, setPhone] = useState(() => extract10Digits(customerDetails.phone || ""));
   const [table, setTable] = useState(customerDetails.table || "Takeaway");
   const [notes, setNotes] = useState(customerDetails.notes || "");
   const [isPlacing, setIsPlacing] = useState(false);
@@ -29,9 +42,13 @@ export const CheckoutPage = () => {
     setCustomerDetails((prev) => ({ ...prev, name: val }));
   };
 
-  const handlePhoneChange = (val) => {
-    setPhone(val);
-    setCustomerDetails((prev) => ({ ...prev, phone: val }));
+  const handlePhoneChange = (raw) => {
+    const cleaned = extract10Digits(raw);
+    setPhone(cleaned);
+    setCustomerDetails((prev) => ({
+      ...prev,
+      phone: cleaned ? `+91 ${cleaned}` : "",
+    }));
   };
 
   const handleTableChange = (val) => {
@@ -54,13 +71,17 @@ export const CheckoutPage = () => {
       alert("Please enter your mobile phone number.");
       return;
     }
+    if (!isValidIndianMobile(phone)) {
+      alert("Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9 (e.g. 9847123456).");
+      return;
+    }
 
     setIsPlacing(true);
     try {
       const companyId = company ? company._id : "6af8890bb0d5cb3fd1c686bc";
       const payload = {
         name: name.trim(),
-        phone: phone.trim(),
+        phone: `+91 ${phone.trim()}`,
         table,
         notes: notes.trim(),
         items: cart.map((i) => ({
@@ -152,20 +173,44 @@ export const CheckoutPage = () => {
               />
             </div>
 
-            {/* Phone */}
+            {/* Phone with fixed Indian +91 prefix and 10 digits validation */}
             <div>
-              <label className="text-xs font-bold text-gray-700 block mb-1 flex items-center gap-1.5">
-                <Phone className="w-3.5 h-3.5 text-amber-600" />
-                <span>Mobile Phone Number *</span>
+              <label className="text-xs font-bold text-gray-700 block mb-1 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Mobile Phone Number *</span>
+                </span>
+                <span className="text-[10px] text-gray-400 font-semibold">10-Digit Indian Mobile</span>
               </label>
-              <input
-                type="tel"
-                required
-                placeholder="e.g. +91 98765 43210"
-                className="w-full text-sm bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all font-medium"
-                value={phone}
-                onChange={(e) => handlePhoneChange(e.target.value)}
-              />
+
+              <div className="flex items-center rounded-xl border border-gray-200 bg-gray-50 overflow-hidden focus-within:ring-2 focus-within:ring-amber-500 focus-within:bg-white focus-within:border-amber-500 transition-all">
+                <div className="px-3 py-2.5 bg-amber-50/80 border-r border-gray-200 text-xs font-black text-amber-900 flex items-center gap-1.5 select-none shrink-0">
+                  <span className="text-sm">🇮🇳</span>
+                  <span>+91</span>
+                </div>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  required
+                  placeholder="98765 43210"
+                  className="w-full text-sm bg-transparent px-3 py-2.5 text-gray-900 focus:outline-none font-semibold tracking-wider"
+                  value={phone}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
+                />
+                {phone.length === 10 && isValidIndianMobile(phone) && (
+                  <span className="pr-3 text-emerald-600 text-xs font-black shrink-0">✓</span>
+                )}
+              </div>
+
+              {phone.length > 0 && !isValidIndianMobile(phone) && (
+                <p className="text-[11px] text-amber-800 mt-1 font-semibold flex items-center gap-1">
+                  <span>⚠</span>
+                  {phone.length < 10
+                    ? `Enter ${10 - phone.length} more digit${10 - phone.length === 1 ? '' : 's'} (10 digits required)`
+                    : 'Indian mobile numbers must start with 6, 7, 8, or 9'}
+                </p>
+              )}
             </div>
 
             {/* Dining / Pickup Options */}

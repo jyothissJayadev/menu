@@ -83,6 +83,15 @@ router.post("/", async (req, res) => {
     const nextOrderNumber = lastOrder && lastOrder.orderNumber ? lastOrder.orderNumber + 1 : 101;
     const orderNo = `ORD-${nextOrderNumber}`;
 
+    // Standardize Indian phone number (+91 XXXXXXXXXX)
+    let formattedPhone = phone ? String(phone).trim() : "";
+    const digitsOnly = formattedPhone.replace(/\D/g, "");
+    if (digitsOnly.length === 12 && digitsOnly.startsWith("91")) {
+      formattedPhone = `+91 ${digitsOnly.slice(2)}`;
+    } else if (digitsOnly.length === 10) {
+      formattedPhone = `+91 ${digitsOnly}`;
+    }
+
     const order = await Order.create({
       companyId,
       orderNo,
@@ -90,7 +99,7 @@ router.post("/", async (req, res) => {
       items: orderItems,
       table: table || "Takeaway",
       name: name || "Customer",
-      phone: phone || "",
+      phone: formattedPhone,
       notes: notes || "",
       total,
       status: "pending",

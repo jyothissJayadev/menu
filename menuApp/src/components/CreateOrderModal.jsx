@@ -15,6 +15,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 
+const extract10Digits = (val) => {
+  if (!val) return '';
+  let digits = String(val).replace(/\D/g, '');
+  if (digits.length === 12 && digits.startsWith('91')) {
+    digits = digits.slice(2);
+  } else if (digits.length === 11 && digits.startsWith('0')) {
+    digits = digits.slice(1);
+  }
+  return digits.slice(0, 10);
+};
+
+const isValidIndianMobile = (p) => /^[6-9]\d{9}$/.test(p);
+
 export const CreateOrderModal = ({ visible, onClose }) => {
   const { items, categories, createNewOrder } = useApp();
 
@@ -148,6 +161,12 @@ export const CreateOrderModal = ({ visible, onClose }) => {
       else Alert.alert('Missing Phone', msg);
       return;
     }
+    if (!isValidIndianMobile(phone)) {
+      const msg = 'Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9 (e.g. 9847123456).';
+      if (Platform.OS === 'web') window.alert(msg);
+      else Alert.alert('Invalid Mobile Number', msg);
+      return;
+    }
     if (selectedItems.length === 0) {
       const msg = 'Please add at least one cake/item to the order.';
       if (Platform.OS === 'web') window.alert(msg);
@@ -158,7 +177,7 @@ export const CreateOrderModal = ({ visible, onClose }) => {
     const payload = {
       name: customerName.trim(),
       customerName: customerName.trim(),
-      phone: phone.trim(),
+      phone: `+91 ${phone.trim()}`,
       table: table.trim() || 'Takeaway',
       notes: notes.trim(),
       items: selectedItems.map((i) => ({
@@ -215,15 +234,36 @@ export const CreateOrderModal = ({ visible, onClose }) => {
                 </View>
 
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>User Phone # *</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="e.g. +91 9847123456"
-                    placeholderTextColor={COLORS.textLight}
-                    keyboardType="phone-pad"
-                    value={phone}
-                    onChangeText={setPhone}
-                  />
+                  <Text style={styles.inputLabel}>User Phone (10 digits) *</Text>
+                  <View style={styles.phoneInputContainer}>
+                    <View style={styles.countryCodeBadge}>
+                      <Text style={styles.countryCodeText}>🇮🇳 +91</Text>
+                    </View>
+                    <TextInput
+                      style={styles.phoneInput}
+                      placeholder="98471 23456"
+                      placeholderTextColor={COLORS.textLight}
+                      keyboardType="number-pad"
+                      maxLength={10}
+                      value={phone}
+                      onChangeText={(val) => setPhone(extract10Digits(val))}
+                    />
+                    {phone.length === 10 && isValidIndianMobile(phone) && (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={16}
+                        color={COLORS.success}
+                        style={{ marginRight: 6 }}
+                      />
+                    )}
+                  </View>
+                  {phone.length > 0 && !isValidIndianMobile(phone) && (
+                    <Text style={styles.phoneErrorText}>
+                      {phone.length < 10
+                        ? `${10 - phone.length} more digit${10 - phone.length === 1 ? '' : 's'} needed`
+                        : 'Must start with 6, 7, 8, or 9'}
+                    </Text>
+                  )}
                 </View>
               </View>
 
@@ -593,6 +633,41 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     fontSize: 13,
     color: COLORS.textPrimary,
+  },
+  phoneInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surfaceAlt,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  countryCodeBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 7,
+    paddingVertical: 8,
+    borderRightWidth: 1,
+    borderRightColor: COLORS.border,
+  },
+  countryCodeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.primaryDark,
+  },
+  phoneInput: {
+    flex: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: COLORS.textPrimary,
+    fontWeight: '600',
+  },
+  phoneErrorText: {
+    fontSize: 9,
+    color: COLORS.danger,
+    marginTop: 2,
+    fontWeight: '700',
   },
   noteInput: {
     minHeight: 52,
