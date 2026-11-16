@@ -1,10 +1,11 @@
 // webMenu/src/pages/MenuPage.jsx
 import React, { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, ShoppingBag, Plus, Minus, ChevronRight } from "lucide-react";
+import { Search, ShoppingBag, Plus, Minus, ChevronRight, Eye } from "lucide-react";
 import { useCart } from "../context/CartContext";
+import { ItemDetailModal } from "../components/ItemDetailModal";
 
-const MenuItemCard = ({ item, onAdd, cart, updateQuantity }) => {
+const MenuItemCard = ({ item, onAdd, cart, updateQuantity, onOpenDetail }) => {
   const hasVariants = Array.isArray(item.variants) && item.variants.length > 0;
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
 
@@ -17,7 +18,10 @@ const MenuItemCard = ({ item, onAdd, cart, updateQuantity }) => {
     : item.price;
 
   return (
-    <div className="bg-white rounded-2xl p-4 border border-amber-100 shadow-sm hover:shadow-md transition-shadow flex gap-4">
+    <div
+      onClick={() => onOpenDetail && onOpenDetail(item)}
+      className="bg-white rounded-2xl p-4 border border-amber-100 shadow-sm hover:shadow-md hover:border-amber-300 transition-all cursor-pointer flex gap-4 group"
+    >
       {/* Thumbnail */}
       <div className="w-24 h-24 rounded-xl overflow-hidden bg-gray-100 shrink-0 relative">
         <img
@@ -26,7 +30,7 @@ const MenuItemCard = ({ item, onAdd, cart, updateQuantity }) => {
             "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500&auto=format&fit=crop&q=60"
           }
           alt={item.name}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
         {item.originalPrice && (
           <span className="absolute top-1 left-1 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow">
@@ -38,14 +42,21 @@ const MenuItemCard = ({ item, onAdd, cart, updateQuantity }) => {
       {/* Info */}
       <div className="flex-1 flex flex-col justify-between">
         <div>
-          <h3 className="font-bold text-gray-900 text-sm leading-snug">{item.name}</h3>
+          <div className="flex items-start justify-between gap-1">
+            <h3 className="font-bold text-gray-900 text-sm leading-snug group-hover:text-amber-800 transition-colors">
+              {item.name}
+            </h3>
+          </div>
           {item.description && (
             <p className="text-gray-500 text-xs mt-1 line-clamp-2">{item.description}</p>
           )}
 
           {/* Weight Variant Selector Chips (0.5 kg, 1 kg, 1.5 kg, 2 kg) */}
           {hasVariants && (
-            <div className="mt-2 flex flex-wrap gap-1.5 items-center">
+            <div
+              className="mt-2 flex flex-wrap gap-1.5 items-center"
+              onClick={(e) => e.stopPropagation()}
+            >
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1">
                 Weight:
               </span>
@@ -55,7 +66,10 @@ const MenuItemCard = ({ item, onAdd, cart, updateQuantity }) => {
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => setSelectedVariantIndex(idx)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedVariantIndex(idx);
+                    }}
                     className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all border ${
                       isSelected
                         ? "bg-amber-600 text-white border-amber-600 shadow-xs"
@@ -80,9 +94,15 @@ const MenuItemCard = ({ item, onAdd, cart, updateQuantity }) => {
 
           {/* Add / Qty Controls */}
           {cartItem ? (
-            <div className="flex items-center bg-amber-50 rounded-lg border border-amber-200">
+            <div
+              className="flex items-center bg-amber-50 rounded-lg border border-amber-200"
+              onClick={(e) => e.stopPropagation()}
+            >
               <button
-                onClick={() => updateQuantity(cartItemId, -1)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  updateQuantity(cartItemId, -1);
+                }}
                 className="w-7 h-7 flex items-center justify-center text-amber-800 hover:bg-amber-100 rounded-l"
               >
                 <Minus className="w-3.5 h-3.5" />
@@ -91,7 +111,10 @@ const MenuItemCard = ({ item, onAdd, cart, updateQuantity }) => {
                 {cartItem.quantity}
               </span>
               <button
-                onClick={() => updateQuantity(cartItemId, 1)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  updateQuantity(cartItemId, 1);
+                }}
                 className="w-7 h-7 flex items-center justify-center text-amber-800 hover:bg-amber-100 rounded-r"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -99,7 +122,10 @@ const MenuItemCard = ({ item, onAdd, cart, updateQuantity }) => {
             </div>
           ) : (
             <button
-              onClick={() => onAdd(item, currentVariant)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAdd(item, currentVariant);
+              }}
               className="bg-amber-600 hover:bg-amber-700 active:scale-95 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-sm"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -117,6 +143,7 @@ export const MenuPage = () => {
     useCart();
   const [selectedCat, setSelectedCat] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedDetailItem, setSelectedDetailItem] = useState(null);
   const navigate = useNavigate();
 
   // Group items section-wise by category in sequential order
@@ -273,6 +300,7 @@ export const MenuPage = () => {
                       onAdd={addToCart}
                       cart={cart}
                       updateQuantity={updateQuantity}
+                      onOpenDetail={setSelectedDetailItem}
                     />
                   ))}
                 </div>
@@ -281,6 +309,14 @@ export const MenuPage = () => {
           </div>
         )}
       </main>
+
+      {/* Item Details Modal Overlay */}
+      <ItemDetailModal
+        item={selectedDetailItem}
+        isOpen={Boolean(selectedDetailItem)}
+        onClose={() => setSelectedDetailItem(null)}
+        categories={categories}
+      />
 
       {/* Floating Bottom View Cart Bar (Links to /cart route) */}
       {cartCount > 0 && (

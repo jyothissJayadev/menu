@@ -102,7 +102,8 @@ export const CartProvider = ({ children }) => {
     };
   }, []);
 
-  const addToCart = (item, selectedVariant = null) => {
+  const addToCart = (item, selectedVariant = null, quantity = 1) => {
+    const qty = Math.max(1, Number(quantity) || 1);
     const variantWeight = selectedVariant ? selectedVariant.weight : "";
     const variantPrice = selectedVariant
       ? (selectedVariant.offerPrice || selectedVariant.price)
@@ -115,7 +116,7 @@ export const CartProvider = ({ children }) => {
       const existing = prev.find((i) => i.id === cartItemId);
       if (existing) {
         return prev.map((i) =>
-          i.id === cartItemId ? { ...i, quantity: i.quantity + 1 } : i
+          i.id === cartItemId ? { ...i, quantity: i.quantity + qty } : i
         );
       }
       return [
@@ -127,7 +128,41 @@ export const CartProvider = ({ children }) => {
           selectedVariant: selectedVariant || null,
           variant: variantWeight,
           price: variantPrice,
-          quantity: 1,
+          quantity: qty,
+        },
+      ];
+    });
+  };
+
+  const setItemQuantity = (item, selectedVariant = null, exactQty = 1) => {
+    const variantWeight = selectedVariant ? selectedVariant.weight : "";
+    const variantPrice = selectedVariant
+      ? (selectedVariant.offerPrice || selectedVariant.price)
+      : item.price;
+    const cartItemId = selectedVariant
+      ? `${item.id}_${selectedVariant.weight}`
+      : item.id;
+
+    setCart((prev) => {
+      if (exactQty <= 0) {
+        return prev.filter((i) => i.id !== cartItemId);
+      }
+      const existing = prev.find((i) => i.id === cartItemId);
+      if (existing) {
+        return prev.map((i) =>
+          i.id === cartItemId ? { ...i, quantity: exactQty } : i
+        );
+      }
+      return [
+        ...prev,
+        {
+          ...item,
+          id: cartItemId,
+          originalItemId: item.id,
+          selectedVariant: selectedVariant || null,
+          variant: variantWeight,
+          price: variantPrice,
+          quantity: exactQty,
         },
       ];
     });
@@ -170,6 +205,7 @@ export const CartProvider = ({ children }) => {
         loading,
         cart,
         addToCart,
+        setItemQuantity,
         updateQuantity,
         removeFromCart,
         clearCart,
