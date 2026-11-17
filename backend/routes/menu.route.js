@@ -5,6 +5,8 @@ import Item from "../models/Item.schema.js";
 import Addon from "../models/Addon.schema.js";
 import TopPick from "../models/TopPick.schema.js";
 import { isNowInWindows } from "../utils/timing.js";
+import { upload } from "../middlewares/upload.middleware.js";
+import { uploadImage } from "../utils/cloudStorage.js";
 
 const router = express.Router({ mergeParams: true });
 
@@ -129,9 +131,9 @@ router.delete("/categories/:categoryId", async (req, res) => {
 
 /**
  * POST /api/companies/:companyId/menu/items
- * Create new cake / menu item
+ * Create new cake / menu item (supports both JSON and multipart/form-data with file upload)
  */
-router.post("/items", async (req, res) => {
+router.post("/items", upload.single("image"), async (req, res) => {
   try {
     const companyId = req.params.companyId || req.companyId;
     const {
@@ -140,16 +142,31 @@ router.post("/items", async (req, res) => {
       name,
       description = "",
       price,
-      image = "",
       veg = true,
       offer = false,
       offerPrice = null,
-      variants = [],
       available = true,
     } = req.body;
 
     if (!name || typeof price === "undefined") {
       return res.status(400).json({ error: "Name and price are required" });
+    }
+
+    // Process image: if file uploaded via multer, upload to cloud storage
+    let imageUrl = req.body.image || "";
+    if (req.file) {
+      const uploadResult = await uploadImage(req.file, `companies/${companyId}/cakes`);
+      imageUrl = uploadResult.url;
+    }
+
+    // Parse variants if provided as string from FormData
+    let variants = req.body.variants || [];
+    if (typeof variants === "string") {
+      try {
+        variants = JSON.parse(variants);
+      } catch (_) {
+        variants = [];
+      }
     }
 
     let targetCatId = categoryId;
@@ -180,12 +197,12 @@ router.post("/items", async (req, res) => {
       name: name.trim(),
       description: description.trim(),
       price: Number(price),
-      image,
-      veg,
-      offer: Boolean(offer),
+      image: imageUrl,
+      veg: String(veg) === "true" || veg === true,
+      offer: String(offer) === "true" || offer === true,
       offerPrice: offer && offerPrice ? Number(offerPrice) : null,
       variants: Array.isArray(variants) ? variants : [],
-      available: available !== undefined ? Boolean(available) : true,
+      available: available !== undefined ? (String(available) === "true" || available === true) : true,
       timing: [],
     });
 
@@ -198,13 +215,33 @@ router.post("/items", async (req, res) => {
 
 /**
  * PUT /api/companies/:companyId/menu/items/:itemId
- * Update cake / menu item (e.g. stock toggle, price edit)
+ * Update cake / menu item (supports both JSON and multipart/form-data with file upload)
  */
-router.put("/items/:itemId", async (req, res) => {
+router.put("/items/:itemId", upload.single("image"), async (req, res) => {
   try {
     const companyId = req.params.companyId || req.companyId;
     const { itemId } = req.params;
-    const updates = req.body;
+    const updates = { ...req.body };
+
+    // If image file uploaded via multer
+    if (req.file) {
+      const uploadResult = await uploadImage(req.file, `companies/${companyId}/cakes`);
+      updates.image = uploadResult.url;
+    }
+
+    // Parse variants if passed as string
+    if (typeof updates.variants === "string") {
+      try {
+        updates.variants = JSON.parse(updates.variants);
+      } catch (_) {
+        delete updates.variants;
+      }
+    }
+
+    if (updates.price !== undefined) updates.price = Number(updates.price);
+    if (updates.offer !== undefined) updates.offer = String(updates.offer) === "true" || updates.offer === true;
+    if (updates.available !== undefined) updates.available = String(updates.available) === "true" || updates.available === true;
+    if (updates.veg !== undefined) updates.veg = String(updates.veg) === "true" || updates.veg === true;
 
     // If changing category name
     if (updates.categoryName && updates.categoryName.trim()) {

@@ -63,7 +63,7 @@ export const CartProvider = ({ children }) => {
           setCompany(comp);
           const menuData = await fetchMenu(comp._id);
           if (menuData && isMounted) {
-            if (menuData.categories && menuData.categories.length > 0) {
+            if (Array.isArray(menuData.categories)) {
               setCategories(
                 menuData.categories.map((c) => ({
                   id: c._id,
@@ -72,7 +72,7 @@ export const CartProvider = ({ children }) => {
                 }))
               );
             }
-            if (menuData.allItems && menuData.allItems.length > 0) {
+            if (Array.isArray(menuData.allItems)) {
               setMenuItems(
                 menuData.allItems.map((i) => ({
                   id: i._id,

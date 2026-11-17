@@ -37,17 +37,17 @@ export const AppProvider = ({ children }) => {
           // Fetch Menu
           const menuData = await api.getMenu(comp._id);
           if (menuData && isMounted) {
-            if (menuData.categories && menuData.categories.length > 0) {
+            if (Array.isArray(menuData.categories)) {
               setCategories(menuData.categories);
             }
-            if (menuData.allItems && menuData.allItems.length > 0) {
+            if (Array.isArray(menuData.allItems)) {
               setItems(menuData.allItems);
             }
           }
 
           // Fetch Orders
           const liveOrders = await api.getOrders(comp._id);
-          if (liveOrders && Array.isArray(liveOrders) && liveOrders.length > 0 && isMounted) {
+          if (Array.isArray(liveOrders) && isMounted) {
             setOrders(liveOrders);
           }
         }
@@ -467,13 +467,42 @@ export const AppProvider = ({ children }) => {
     };
   }, [orders]);
 
+  // Derive customer database dynamically from live database orders
+  const derivedCustomers = useMemo(() => {
+    if (!orders || orders.length === 0) return customers;
+    const map = {};
+    orders.forEach((ord) => {
+      const phone = ord.phone || 'N/A';
+      const name = ord.name || 'Valued Customer';
+      if (!map[phone]) {
+        map[phone] = {
+          _id: `cust-${phone.replace(/\s+/g, '')}`,
+          name,
+          phone,
+          ordersCount: 0,
+          totalSpent: 0,
+          lastOrderDate: ord.createdAt || ord.startTime,
+        };
+      }
+      map[phone].ordersCount += 1;
+      map[phone].totalSpent += Number(ord.total || 0);
+      if (
+        ord.createdAt &&
+        (!map[phone].lastOrderDate || new Date(ord.createdAt) > new Date(map[phone].lastOrderDate))
+      ) {
+        map[phone].lastOrderDate = ord.createdAt;
+      }
+    });
+    return Object.values(map);
+  }, [orders, customers]);
+
   const value = {
     company,
     isLiveConnected,
     categories,
     items,
     orders,
-    customers,
+    customers: derivedCustomers,
     isShopOpen,
     setIsShopOpen,
     activeStatusFilter,

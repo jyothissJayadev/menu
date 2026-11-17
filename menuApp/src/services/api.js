@@ -189,3 +189,39 @@ export async function reorderCategories(companyId, orderedIds) {
     return null;
   }
 }
+
+/**
+ * Upload an image file (e.g. from gallery or camera) to Cloudinary / cloud storage
+ */
+export async function uploadImage(fileUri, fileName = 'cake.jpg', mimeType = 'image/jpeg') {
+  try {
+    const formData = new FormData();
+    if (Platform.OS === 'web') {
+      if (fileUri.startsWith('data:') || fileUri.startsWith('blob:')) {
+        const response = await fetch(fileUri);
+        const blob = await response.blob();
+        formData.append('image', blob, fileName);
+      } else {
+        return fileUri;
+      }
+    } else {
+      formData.append('image', {
+        uri: fileUri,
+        name: fileName,
+        type: mimeType,
+      });
+    }
+
+    const res = await fetch(`${API_BASE_URL}/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!res.ok) throw new Error('Failed to upload image');
+    const data = await res.json();
+    return data.url || fileUri;
+  } catch (err) {
+    console.warn('API uploadImage error:', err.message);
+    return fileUri;
+  }
+}

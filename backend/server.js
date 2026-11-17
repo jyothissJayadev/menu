@@ -1,7 +1,7 @@
 // server.js  (ES MODULE VERSION)
 // Make sure your package.json contains:  "type": "module"
 
-import "dotenv/config";
+import dotenv from "dotenv";
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
@@ -13,6 +13,10 @@ import { fileURLToPath } from "url";
 // Convert __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Load env from backend/.env first, then root ../.env
+dotenv.config({ path: path.resolve(__dirname, ".env") });
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 // Env & config
 const PORT = process.env.PORT || 4000;
@@ -52,10 +56,25 @@ import menuRoute from "./routes/menu.route.js";
 import orderRoute from "./routes/order.route.js";
 import paymentRoute from "./routes/payment.route.js";
 import topPickRoute from "./routes/topPick.route.js";
+import uploadRoute from "./routes/upload.route.js";
 
 /* -----------------------------
    Route Mounting
    ----------------------------- */
+// Serve local uploads folder statically
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// Uploads (Multer + Cloudinary / Cloudflare R2)
+app.use("/api/upload", uploadRoute);
+app.use(
+  "/api/companies/:companyId/upload",
+  (req, res, next) => {
+    req.companyId = req.params.companyId;
+    next();
+  },
+  uploadRoute
+);
+
 app.use("/api/auth", authRoute);
 
 app.use("/api/companies", companyRoute);

@@ -12,11 +12,13 @@ import {
   Image,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SHADOWS } from '../theme/colors';
 import { useApp } from '../context/AppContext';
+import { uploadImage } from '../services/api';
 
 export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
   const { categories, addItem, updateItem } = useApp();
@@ -30,6 +32,7 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
   const [available, setAvailable] = useState(true);
   const [image, setImage] = useState('');
   const [variants, setVariants] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Dropdown & New Category State
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -176,7 +179,7 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
     onClose();
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!name.trim()) {
       const msg = 'Please enter the cake / item name';
       if (Platform.OS === 'web') window.alert(msg);
@@ -206,6 +209,24 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
       }
     }
 
+    let finalImageUrl = image.trim();
+    // If user picked a local file from phone gallery or camera, upload it to cloud storage
+    if (
+      finalImageUrl.startsWith('file:') ||
+      finalImageUrl.startsWith('blob:') ||
+      finalImageUrl.startsWith('data:')
+    ) {
+      try {
+        setIsUploading(true);
+        const uploadedUrl = await uploadImage(finalImageUrl, `${name.trim().replace(/\s+/g, '_')}.jpg`);
+        if (uploadedUrl) finalImageUrl = uploadedUrl;
+      } catch (err) {
+        console.warn('Image upload error:', err);
+      } finally {
+        setIsUploading(false);
+      }
+    }
+
     const payload = {
       name: name.trim(),
       categoryId: categoryId || (categories[0] ? categories[0]._id : 'cat-1'),
@@ -215,13 +236,13 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
       offerPrice: hasOffer && offerPrice ? Number(offerPrice) : null,
       variants: cleanedVariants,
       available,
-      image: image.trim() || 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500&auto=format&fit=crop&q=60',
+      image: finalImageUrl || 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500&auto=format&fit=crop&q=60',
     };
 
     if (initialItem) {
-      updateItem(initialItem._id, payload, assignedNewCategoryName);
+      await updateItem(initialItem._id, payload, assignedNewCategoryName);
     } else {
-      addItem(payload, assignedNewCategoryName);
+      await addItem(payload, assignedNewCategoryName);
     }
 
     handleClose();
@@ -581,11 +602,24 @@ export const ItemFormModal = ({ visible, onClose, initialItem = null }) => {
             <TouchableOpacity style={styles.cancelBtn} onPress={handleClose}>
               <Text style={styles.cancelBtnText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.saveBtn} onPress={handleSubmit}>
-              <Ionicons name="checkmark-circle" size={18} color={COLORS.textWhite} />
-              <Text style={styles.saveBtnText}>
-                {initialItem ? 'Update Item' : 'Add to Menu'}
-              </Text>
+            <TouchableOpacity
+              style={[styles.saveBtn, isUploading && { opacity: 0.7 }]}
+              onPress={handleSubmit}
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <>
+                  <ActivityIndicator size="small" color={COLORS.textWhite} />
+                  <Text style={styles.saveBtnText}>Uploading...</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.textWhite} />
+                  <Text style={styles.saveBtnText}>
+                    {initialItem ? 'Update Item' : 'Add to Menu'}
+                  </Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
         </View>

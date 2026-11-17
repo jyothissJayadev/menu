@@ -54,3 +54,5 @@ yarn-error.log*
 config.local.json
 credentials.json
 secrets.txt
+backend/uploads/
+uploads/
