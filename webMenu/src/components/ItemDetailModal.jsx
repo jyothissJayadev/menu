@@ -280,7 +280,15 @@ export const ItemDetailModal = ({ item, isOpen, onClose, categories = [] }) => {
 
         {/* Footer Add To Cart Action */}
         <div className="p-4 sm:p-5 bg-white border-t border-gray-100 shadow-lg shrink-0">
-          {quantity === 0 ? (
+          {item.available === false ? (
+            <button
+              type="button"
+              disabled={true}
+              className="w-full py-3.5 px-6 rounded-2xl font-bold text-sm bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <span>Currently Sold Out / Unavailable</span>
+            </button>
+          ) : quantity === 0 ? (
             <button
               type="button"
               disabled={true}

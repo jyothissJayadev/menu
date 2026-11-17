@@ -77,6 +77,37 @@ export const AppProvider = ({ children }) => {
     };
   }, []);
 
+  /**
+   * Manually re-sync all categories, items, and orders from MongoDB database
+   */
+  const refreshData = async () => {
+    let comp = companyRef.current;
+    if (!comp || !comp._id) {
+      comp = await api.getCompany();
+      if (comp) {
+        setCompany(comp);
+        companyRef.current = comp;
+      }
+    }
+    if (comp && comp._id) {
+      try {
+        const [menuData, liveOrders] = await Promise.all([
+          api.getMenu(comp._id),
+          api.getOrders(comp._id),
+        ]);
+        if (menuData) {
+          if (Array.isArray(menuData.categories)) setCategories(menuData.categories);
+          if (Array.isArray(menuData.allItems)) setItems(menuData.allItems);
+        }
+        if (Array.isArray(liveOrders)) {
+          setOrders(liveOrders);
+        }
+      } catch (err) {
+        console.warn('refreshData error:', err);
+      }
+    }
+  };
+
   // --- ORDER ACTIONS ---
 
   /**
@@ -499,6 +530,7 @@ export const AppProvider = ({ children }) => {
   const value = {
     company,
     isLiveConnected,
+    refreshData,
     categories,
     items,
     orders,

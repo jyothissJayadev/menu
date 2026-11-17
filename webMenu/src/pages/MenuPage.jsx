@@ -30,13 +30,19 @@ const MenuItemCard = ({ item, onAdd, cart, updateQuantity, onOpenDetail }) => {
             "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500&auto=format&fit=crop&q=60"
           }
           alt={item.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${
+            item.available === false ? "grayscale opacity-60" : ""
+          }`}
         />
-        {item.originalPrice && (
+        {item.available === false ? (
+          <span className="absolute inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center text-white text-[10px] font-black tracking-wider uppercase">
+            Sold Out
+          </span>
+        ) : item.originalPrice ? (
           <span className="absolute top-1 left-1 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow">
             OFFER
           </span>
-        )}
+        ) : null}
       </div>
 
       {/* Info */}
@@ -93,7 +99,11 @@ const MenuItemCard = ({ item, onAdd, cart, updateQuantity, onOpenDetail }) => {
           </div>
 
           {/* Add / Qty Controls */}
-          {cartItem ? (
+          {item.available === false ? (
+            <span className="bg-gray-100 text-gray-400 px-2.5 py-1.5 rounded-lg text-xs font-bold border border-gray-200 cursor-not-allowed">
+              Sold Out
+            </span>
+          ) : cartItem ? (
             <div
               className="flex items-center bg-amber-50 rounded-lg border border-amber-200"
               onClick={(e) => e.stopPropagation()}

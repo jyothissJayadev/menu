@@ -14,6 +14,7 @@ import {
   Platform,
   SafeAreaView,
   Modal,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../theme/colors';
@@ -22,12 +23,21 @@ import { Header } from '../components/Header';
 import { ItemFormModal } from '../components/ItemFormModal';
 
 export const MenuManagementScreen = () => {
-  const { categories, items, deleteItem, toggleItemAvailability, reorderCategories } = useApp();
+  const { categories, items, deleteItem, toggleItemAvailability, reorderCategories, refreshData } = useApp();
   const [selectedCat, setSelectedCat] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    if (refreshData) {
+      await refreshData();
+    }
+    setRefreshing(false);
+  };
 
   // If a category was deleted/pruned and was currently selected, reset filter to 'all'
   useEffect(() => {
@@ -206,6 +216,14 @@ export const MenuManagementScreen = () => {
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContent}
         stickySectionHeadersEnabled={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
+        }
         renderSectionHeader={({ section }) => (
           <View style={styles.sectionHeaderCard}>
             <View style={styles.sectionHeaderLeft}>

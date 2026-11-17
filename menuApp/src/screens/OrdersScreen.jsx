@@ -28,17 +28,18 @@ const FILTER_TABS = [
 ];
 
 export const OrdersScreen = () => {
-  const { orders, stats, activeStatusFilter, setActiveStatusFilter, simulateIncomingOrder } = useApp();
+  const { orders, stats, activeStatusFilter, setActiveStatusFilter, simulateIncomingOrder, refreshData } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 600);
+    if (refreshData) {
+      await refreshData();
+    }
+    setRefreshing(false);
   };
 
   // Filter orders by active tab and search query

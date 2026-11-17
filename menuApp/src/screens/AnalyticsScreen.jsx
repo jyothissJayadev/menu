@@ -1,5 +1,5 @@
 // src/screens/AnalyticsScreen.jsx
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import { useApp } from '../context/AppContext';
 import { Header } from '../components/Header';
 
 export const AnalyticsScreen = () => {
-  const { stats, orders } = useApp();
+  const { stats, orders, items, categories } = useApp();
 
   // Hourly volume simulation for today
   const hourlyData = [
@@ -25,44 +25,51 @@ export const AnalyticsScreen = () => {
     { hour: '8 PM', orders: 3, height: 45 },
   ];
 
-  // Best Selling Cakes leaderboard
-  const topSellers = [
-    {
-      name: 'Belgian Truffle Chocolate Cake',
-      category: 'Celebration Cakes',
-      sold: 14,
-      revenue: '₹10,500',
-      percentage: 38,
-    },
-    {
-      name: 'New York Blueberry Cheesecake',
-      category: 'Cheesecakes',
-      sold: 11,
-      revenue: '₹3,080',
-      percentage: 24,
-    },
-    {
-      name: 'Red Velvet Cream Cheese Cake',
-      category: 'Celebration Cakes',
-      sold: 8,
-      revenue: '₹4,400',
-      percentage: 18,
-    },
-    {
-      name: 'French Butter Croissant',
-      category: 'Pastries',
-      sold: 16,
-      revenue: '₹2,240',
-      percentage: 12,
-    },
-    {
-      name: 'Salted Caramel Hazelnut Cupcake',
-      category: 'Cupcakes',
-      sold: 9,
-      revenue: '₹1,440',
-      percentage: 8,
-    },
-  ];
+  // Dynamically compute Best Selling Cakes leaderboard from live database orders
+  const topSellers = useMemo(() => {
+    const catMap = {};
+    (categories || []).forEach((c) => {
+      catMap[c._id] = c.name;
+    });
+    const itemCatMap = {};
+    (items || []).forEach((it) => {
+      itemCatMap[it.name] = catMap[it.categoryId] || 'Cake Special';
+    });
+
+    const itemMap = {};
+    orders.forEach((o) => {
+      if (o.status === 'cancelled') return;
+      (o.items || []).forEach((it) => {
+        const key = it.name || 'Special Cake';
+        if (!itemMap[key]) {
+          itemMap[key] = {
+            name: key,
+            category: itemCatMap[key] || 'Cake Special',
+            sold: 0,
+            revenue: 0,
+          };
+        }
+        itemMap[key].sold += Number(it.qty) || 1;
+        itemMap[key].revenue += (Number(it.price) || 0) * (Number(it.qty) || 1);
+      });
+    });
+
+    const list = Object.values(itemMap);
+    if (list.length === 0) {
+      return [
+        { name: 'Belgian Truffle Chocolate Cake', category: 'Birthday & Celebration', sold: 0, revenue: '₹0', percentage: 0 },
+      ];
+    }
+    list.sort((a, b) => b.sold - a.sold);
+    const totalSold = list.reduce((s, i) => s + i.sold, 0) || 1;
+    return list.slice(0, 5).map((it) => ({
+      name: it.name,
+      category: it.category,
+      sold: it.sold,
+      revenue: `₹${it.revenue.toLocaleString()}`,
+      percentage: Math.round((it.sold / totalSold) * 100),
+    }));
+  }, [orders, items, categories]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -206,7 +213,7 @@ export const AnalyticsScreen = () => {
                 </View>
                 <View style={{ flex: 1, marginHorizontal: 10 }}>
                   <Text style={styles.cakeName}>{cake.name}</Text>
-                  <Text style={styles.cakeCategory}>{cake.category} • {cake.sold} orders</Text>
+                  <Text style={styles.cakeCategory}>{cake.category} • {cake.sold} {cake.sold === 1 ? 'order' : 'orders'}</Text>
                   <View style={styles.progressBar}>
                     <View
                       style={[

@@ -38,9 +38,9 @@ export const HistoryScreen = () => {
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (
-          order.orderNo.toLowerCase().includes(q) ||
-          order.customerName.toLowerCase().includes(q) ||
-          order.phone.includes(q)
+          (order.orderNo || '').toLowerCase().includes(q) ||
+          (order.customerName || order.name || '').toLowerCase().includes(q) ||
+          (order.phone || '').includes(q)
         );
       }
       return true;
@@ -258,7 +258,7 @@ export const HistoryScreen = () => {
 
                 <View style={styles.customerBrief}>
                   <Ionicons name="person" size={14} color={COLORS.textSecondary} />
-                  <Text style={styles.customerName}>{item.customerName}</Text>
+                  <Text style={styles.customerName}>{item.customerName || item.name || 'Valued Customer'}</Text>
                   <Text style={styles.bullet}>•</Text>
                   <Text style={styles.tableText}>{item.table || 'Takeaway'}</Text>
                 </View>

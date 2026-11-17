@@ -97,8 +97,15 @@ export const CartProvider = ({ children }) => {
       }
     }
     loadData();
+
+    // Re-sync menu data periodically every 15s and on window focus so any updates from staff app sync immediately
+    const interval = setInterval(loadData, 15000);
+    window.addEventListener("focus", loadData);
+
     return () => {
       isMounted = false;
+      clearInterval(interval);
+      window.removeEventListener("focus", loadData);
     };
   }, []);
 
@@ -206,6 +213,7 @@ export const CartProvider = ({ children }) => {
         categories,
         menuItems,
         loading,
+        refreshMenu: loadData,
         cart,
         addToCart,
         setItemQuantity,
